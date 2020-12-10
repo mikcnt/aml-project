@@ -5,42 +5,99 @@ import torch.nn as nn
 import torchvision.models as models
 
 class ColorizationNet(nn.Module):
-    def __init__(self, input_size=128):
+    def __init__(self):
         super(ColorizationNet, self).__init__()
-        MIDLEVEL_FEATURE_SIZE = 128
 
-        ## First half: ResNet
-        resnet = models.resnet18(num_classes=365) 
-        # Change first conv layer to accept single-channel (grayscale) input
-        resnet.conv1.weight = nn.Parameter(resnet.conv1.weight.sum(dim=1).unsqueeze(1)) 
-        # Extract midlevel features from ResNet-gray
-        self.midlevel_resnet = nn.Sequential(*list(resnet.children())[0:6])
+        self.model1 = nn.Sequential(
+        	nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(64, 64, kernel_size=3, stride=2, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(64),
+        )
 
-        ## Second half: Upsampling
-        self.upsample = nn.Sequential(         
-            nn.Conv2d(MIDLEVEL_FEATURE_SIZE, 128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Upsample(scale_factor=2),
-            nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.Conv2d(32, 2, kernel_size=3, stride=1, padding=1),
-            nn.Upsample(scale_factor=2)
+        self.model2 = nn.Sequential(
+        	nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(128)
+        )
+
+        self.model3 = nn.Sequential(
+        	nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(256)
+        )
+
+        self.model4 = nn.Sequential(
+        	nn.Conv2d(256, 512, kernel_size=3,  padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(512, 512, kernel_size=3, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(512, 512, kernel_size=3, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(512)
+        )
+
+        self.model5 = nn.Sequential(
+        	nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(512)
+        )
+
+        self.model6 = nn.Sequential(
+        	nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(512)
+        )
+
+        self.model7 = nn.Sequential(
+        	nn.Conv2d(512, 256, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(256)
+        )
+
+        self.model8 = nn.Sequential(
+        	nn.Upsample(scale_factor=2),
+        	nn.Conv2d(256, 128, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=True),
+        	nn.ReLU(),
+        	nn.BatchNorm2d(128)
+        )
+
+        self.model9 = nn.Sequential(
+        	nn.Softmax(dim=1),
+        	nn.Conv2d(128, 313, kernel_size=1, stride=1, dilation=1, padding=0, bias=False),
+        	nn.Upsample(scale_factor=4)
         )
 
     def forward(self, input):
-
-        # Pass input through ResNet-gray to extract features
-        midlevel_features = self.midlevel_resnet(input)
-
-        # Upsample to get colors
-        output = self.upsample(midlevel_features)
-        return output
+    	x = self.model1(input)
+    	x = self.model2(x)
+    	x = self.model3(x)
+    	x = self.model4(x)
+    	x = self.model5(x)
+    	x = self.model6(x)
+    	x = self.model7(x)
+    	x = self.model8(x)
+    	return self.model9(x)

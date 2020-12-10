@@ -75,7 +75,7 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
         data_time.update(time.time() - end)
 
         # Run forward pass
-        output_ab = model(input_gray) 
+        output_ab = model(input_gray)
         loss = criterion(output_ab, input_ab) 
         losses.update(loss.item(), input_gray.size(0))
 
