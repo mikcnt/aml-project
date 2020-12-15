@@ -7,80 +7,77 @@ import sklearn.neighbors as nn
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
 
+pts_hull = np.load("data/pts_in_hull.npy")
+p_tilde = np.load('data/prior_factor.npy')
+nearest = nn.NearestNeighbors(n_neighbors=5, algorithm='ball_tree')
+nearest.fit(pts_hull)
 
-class MultimodalClassification(object):
-    def __init__(self):
-        # Load the color prior factor that encourages rare colors
-        self.pts_hull = np.load("data/pts_in_hull.npy")
-        self.p_tilde = np.load('data/prior_factor.npy')
-        self.nearest = nn.NearestNeighbors(n_neighbors=5, algorithm='ball_tree')
-        self.nearest.fit(self.pts_hull)
+# parameters for smoothed soft-encoding
+n_points = 1000
+sigma = 5
+lambda_ = 0.5
+eps = 1e-5
+q = 313
 
-        # parameters for smoothed soft-encoding
-        self.n_points = 1000
-        self.sigma = 5
-        self.lambda_ = 0.5
-        self.eps = 1e-5
-        self.q = 313
 
-    def multinomial_cross_entropy(self, z_pred, z_true):
-        smoothed_normalized = self.compute_smoothed(z_true)
-        q_star = smoothed_normalized.argmax(axis=1)
+def multinomial_cross_entropy(z_pred, z_true):
+    smoothed_normalized = compute_smoothed(z_true)
+    q_star = smoothed_normalized.argmax(axis=1)
 
-        # rebalancing weighting term
-        weight = self.p_tilde[q_star]
-        z_pred_shifted = z_pred - z_pred.min(axis=0)
-        z_pred_shifted = z_pred_shifted + self.eps
-        z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=0)
-        z_pred_shifted = z_pred_shifted.reshape(-1, self.q)
-        loss = (smoothed_normalized * np.log(z_pred_shifted)).sum(axis=1)
-        loss = - loss * weight
+    # rebalancing weighting term
+    weight = p_tilde[q_star]
+    z_pred_shifted = z_pred - z_pred.min(axis=0)
+    z_pred_shifted = z_pred_shifted + eps
+    z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=0)
+    z_pred_shifted = z_pred_shifted.reshape(-1, q)
+    loss = (smoothed_normalized * np.log(z_pred_shifted)).sum(axis=1)
+    loss = - loss * weight
 
-        return loss.sum()
+    return loss.sum()
 
-    def compute_prior_prob(self, image_ab):
-        """
-        image_ab: numpy of shape (2, 224, 224)
-        """
-        # flattened array of shape (224*224, 2)
-        image_a = image_ab[0, :, :].ravel()
-        image_b = image_ab[1, :, :].ravel()
-        image_ab = np.vstack((image_a, image_b)).T
 
-        # distances and indices of the 5 nearest neighbour of the true image ab channel
-        dists, ind = self.nearest.kneighbors(image_ab)
+def compute_prior_prob(image_ab):
+    """
+    image_ab: numpy of shape (2, 224, 224)
+    """
+    # flattened array of shape (224*224, 2)
+    image_a = image_ab[0, :, :].ravel()
+    image_b = image_ab[1, :, :].ravel()
+    image_ab = np.vstack((image_a, image_b)).T
 
-        ind = np.ravel(ind)
-        counts = np.bincount(ind)
-        idxs = np.nonzero(counts)[0]
+    # distances and indices of the 5 nearest neighbour of the true image ab channel
+    dists, ind = nearest.kneighbors(image_ab)
 
-        # create vector of prior probabilities from non zero occurring pixels
-        prior_prob = np.zeros(self.pts_hull.shape[0])
-        prior_prob[idxs] = counts[idxs]
-        prior_prob = prior_prob / (1.0 * counts.sum())
+    ind = np.ravel(ind)
+    counts = np.bincount(ind)
+    idxs = np.nonzero(counts)[0]
 
-        return prior_prob
+    # create vector of prior probabilities from non zero occurring pixels
+    prior_prob = np.zeros(pts_hull.shape[0])
+    prior_prob[idxs] = counts[idxs]
+    prior_prob = prior_prob / (1.0 * counts.sum())
 
-    def compute_smoothed(self, z_true):
-        """
-        z_true: numpy of shape (2, 224, 224)
-        """
-        # flattened array of shape (224*224, 2)
-        image_a = z_true[0, :, :].ravel()
-        image_b = z_true[1, :, :].ravel()
-        image_ab = np.vstack((image_a, image_b)).T
+    return prior_prob
 
-        # distances and indices of the 5 nearest neighbour of the true image ab channel
-        dists, ind = self.nearest.kneighbors(image_ab)
 
-        wts = np.exp(- dists ** 2) / (2 * self.sigma ** 2)
-        wts = wts / np.sum(wts, axis=1)[:, np.newaxis]
-        z_soft_encoding = np.zeros((image_ab.shape[0], self.q))
+def compute_smoothed(z_true):
+    # flattened array of shape (224*224, 2)
+    h, w, _ = z_true.shape
+    image_a = z_true[:, :, 0].ravel()
+    image_b = z_true[:, :, 1].ravel()
+    image_ab = np.vstack((image_a, image_b)).T
 
-        idx_pts = np.arange(image_ab.shape[0])[:, np.newaxis]
-        z_soft_encoding[idx_pts, ind] = wts
+    # distances and indices of the 5 nearest neighbour of the true image ab channel
+    dists, ind = nearest.kneighbors(image_ab)
 
-        return z_soft_encoding
+    wts = np.exp(- dists ** 2) / (2 * sigma ** 2)
+    wts = wts / np.sum(wts, axis=1)[:, np.newaxis]
+    z_soft_encoding = np.zeros((image_ab.shape[0], q))
+
+    idx_pts = np.arange(image_ab.shape[0])[:, np.newaxis]
+    z_soft_encoding[idx_pts, ind] = wts
+
+    return z_soft_encoding.reshape((h, w, q))
 
 
 class AverageMeter(object):
