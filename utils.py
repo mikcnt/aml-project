@@ -9,16 +9,35 @@ from scipy.signal import gaussian, convolve
 # https://arxiv.org/abs/1603.08511
 
 # Load the color prior factor that encourages rare colors
-prior_factor = np.load("data/prior_factor.npy").astype(np.float32)
 pts_hull = np.load("data/pts_in_hull.npy")
 q = 313
 
 # parameters for smoothed soft-encoding
 n_points = 1000
 sigma = 5
+lambda_ = 0.5
+eps = 1e-5
+
 
 def multinomial_cross_entropy(z_pred, z_true):
-    pass
+    p_tilde = np.load('prior_prob.npy')
+    smoothed_normalized = compute_smoothed(z_true)
+    q_stars = smoothed_normalized.argmax(axis=1)
+    w = 1 / (lambda_ * p_tilde + lambda_ / q)
+
+    # normalizing s.t. E[w] = 1
+    total = p_tilde @ w
+    p_tilde = p_tilde / total
+
+    # rebalancing weighting term
+    weight = w[q_stars]
+    z_pred_shifted = z_pred - z_pred.min(axis=0)
+    z_pred_shifted = z_pred_shifted + eps
+    z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=0)
+    z_pred_shifted = z_pred_shifted.reshape(-1, q)
+    v = (smoothed_normalized * np.log(z_pred_shifted)).sum(axis=1)
+    v = - v * weight
+    return v.sum()
 
 
 def compute_prior_prob(image_ab):
