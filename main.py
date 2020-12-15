@@ -15,7 +15,7 @@ from utils import AverageMeter, to_rgb
 # Parse arguments and prepare program
 parser = argparse.ArgumentParser(description='Training and Using ColorizationNet')
 parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to .pth file checkpoint (default: none)')
-# parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='use this flag to validate without training')
+parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='use this flag to validate without training')
 parser.add_argument('--batch_size', default=12, type=int, metavar='N', help='batch size (default: 12)')
 
 
@@ -50,12 +50,12 @@ def main():
 
     # Training data
     train_transforms = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip()])
-    train_imagefolder = GrayscaleImageFolder('data/train', train_transforms)
+    train_imagefolder = GrayscaleImageFolder('data/train', transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_imagefolder, batch_size=args.batch_size, shuffle=True)
 
     # Validation data
     val_transforms = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224)])
-    val_imagefolder = GrayscaleImageFolder('data/val', val_transforms)
+    val_imagefolder = GrayscaleImageFolder('data/val', transform=val_transforms)
     val_loader = torch.utils.data.DataLoader(val_imagefolder, batch_size=args.batch_size, shuffle=False)
             
     # Move model and loss function to GPU
@@ -71,17 +71,20 @@ def main():
     best_losses = 1e10
     epochs = 100
 
-    # Train model
-    for epoch in range(epochs):
-        # Train for one epoch, then validate
-        train(train_loader, model, criterion, optimizer, epoch, use_gpu)
+    if not args.evaluate:
+        # Train model
+        for epoch in range(epochs):
+            # Train for one epoch, then validate
+            train(train_loader, model, criterion, optimizer, epoch, use_gpu)
+            with torch.no_grad():
+                losses = validate(val_loader, model, criterion, save_images, epoch, use_gpu)
+            # Save checkpoint and replace old best model if current model is better
+            if losses < best_losses:
+                best_losses = losses
+                torch.save(model.state_dict(), 'checkpoints/model-epoch-{}-losses-{:.3f}.pth'.format(epoch+1,losses))
+    else:
         with torch.no_grad():
-            losses = validate(val_loader, model, criterion, save_images, epoch, use_gpu)
-        # Save checkpoint and replace old best model if current model is better
-        if losses < best_losses:
-            best_losses = losses
-            torch.save(model.state_dict(), 'checkpoints/model-epoch-{}-losses-{:.3f}.pth'.format(epoch+1,losses))
-            
-            
+            losses = validate(val_loader, model, criterion, save_images, 0, use_gpu)
+
 if __name__ == '__main__':
     main()
