@@ -12,10 +12,11 @@ import torch.nn.functional as F
 import torchvision.models as models
 from model import ColorizationNet
 from torchvision import datasets, transforms
-from dataset_class import GrayscaleImageFolder
+from data_loader import GrayscaleImageFolder
 # For utilities
 import os, shutil, time, argparse
-from utils import AverageMeter, to_rgb
+from utils import *
+
 
 def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
     model.eval()
@@ -25,11 +26,11 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
 
     end = time.time()
     already_saved_images = False
-    for i, (input_gray, input_ab, target) in enumerate(val_loader):
+    for i, (input_gray, input_ab) in enumerate(val_loader):
         data_time.update(time.time() - end)
 
         # Use GPU
-        if use_gpu: input_gray, input_ab, target = input_gray.cuda(), input_ab.cuda(), target.cuda()
+        if use_gpu: input_gray, input_ab = input_gray.cuda(), input_ab.cuda()
 
         # Run model and record loss
         output_ab = model(input_gray) # throw away class predictions
@@ -66,17 +67,19 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
     batch_time, data_time, losses = AverageMeter(), AverageMeter(), AverageMeter()
 
     end = time.time()
-    for i, (input_gray, input_ab, target) in enumerate(train_loader):
+    for i, (input_gray, input_ab) in enumerate(train_loader):
         
         # Use GPU if available
-        if use_gpu: input_gray, input_ab, target = input_gray.cuda(), input_ab.cuda(), target.cuda()
+        if use_gpu: input_gray, input_ab = input_gray.cuda(), input_ab.cuda()
 
         # Record time to load data (above)
         data_time.update(time.time() - end)
-
+        
         # Run forward pass
         output_ab = model(input_gray)
-        loss = criterion(output_ab, input_ab) 
+
+        #loss = criterion(output_ab, input_ab)
+        loss = multicrossentropy_loss(output_ab, input_ab)
         losses.update(loss.item(), input_gray.size(0))
 
         # Compute gradient and optimize

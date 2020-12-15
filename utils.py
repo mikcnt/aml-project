@@ -20,20 +20,25 @@ eps = 1e-5
 q = 313
 
 
-def multinomial_cross_entropy(z_pred, z_true):
-    smoothed_normalized = compute_smoothed(z_true)
-    q_star = smoothed_normalized.argmax(axis=1)
+def multicrossentropy_loss(z_pred, z_true):
+    batch_size = z_pred.shape[0]
+    z_pred = z_pred.cuda()
+    z_true = z_true.cuda()
+    z_true = z_true.reshape(batch_size, -1, q)
+    q_star = z_true.argmax(axis=2)
 
     # rebalancing weighting term
-    weight = p_tilde[q_star]
-    z_pred_shifted = z_pred - z_pred.min(axis=0)
+    p_tilde_tensor = torch.from_numpy(p_tilde).cuda()
+    weight = p_tilde_tensor[q_star]
+    min_values = z_pred.min(axis=1).values.unsqueeze(1)
+    z_pred_shifted = z_pred - min_values
     z_pred_shifted = z_pred_shifted + eps
-    z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=0)
-    z_pred_shifted = z_pred_shifted.reshape(-1, q)
-    loss = (smoothed_normalized * np.log(z_pred_shifted)).sum(axis=1)
+    z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=1).unsqueeze(1)
+    z_pred_shifted = z_pred_shifted.reshape(batch_size, -1, q)
+    loss = (z_true * torch.log(z_pred_shifted)).sum(axis=2)
     loss = - loss * weight
 
-    return loss.sum()
+    return loss.sum(axis=1).mean()
 
 
 def compute_prior_prob(image_ab):
@@ -41,8 +46,8 @@ def compute_prior_prob(image_ab):
     image_ab: numpy of shape (2, 224, 224)
     """
     # flattened array of shape (224*224, 2)
-    image_a = image_ab[0, :, :].ravel()
-    image_b = image_ab[1, :, :].ravel()
+    image_a = image_ab[:, :, 0].ravel()
+    image_b = image_ab[:, :, 1].ravel()
     image_ab = np.vstack((image_a, image_b)).T
 
     # distances and indices of the 5 nearest neighbour of the true image ab channel

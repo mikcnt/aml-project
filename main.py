@@ -1,9 +1,3 @@
-# For plotting
-import numpy as np
-import matplotlib.pyplot as plt
-# For conversion
-from skimage.color import lab2rgb, rgb2lab, rgb2gray
-from skimage import io
 # For everything
 import torch
 import torch.nn as nn
@@ -12,7 +6,7 @@ import torch.nn.functional as F
 import torchvision.models as models
 from model import ColorizationNet
 from torchvision import datasets, transforms
-from dataset_class import GrayscaleImageFolder
+from data_loader import GrayscaleImageFolder
 from fit import train, validate
 # For utilities
 import os, shutil, time, argparse
@@ -22,9 +16,11 @@ from utils import AverageMeter, to_rgb
 parser = argparse.ArgumentParser(description='Training and Using ColorizationNet')
 parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to .pth file checkpoint (default: none)')
 # parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='use this flag to validate without training')
+parser.add_argument('--batch_size', default=12, type=int, metavar='N', help='batch size (default: 12)')
+
 
 def main():
-    global args, best_losses, use_gpu
+    #global args, best_losses, use_gpu
     args = parser.parse_args()
     print('Arguments: {}'.format(args))
 
@@ -55,12 +51,12 @@ def main():
     # Training data
     train_transforms = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip()])
     train_imagefolder = GrayscaleImageFolder('data/train', train_transforms)
-    train_loader = torch.utils.data.DataLoader(train_imagefolder, batch_size=16, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_imagefolder, batch_size=args.batch_size, shuffle=True)
 
     # Validation data
     val_transforms = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224)])
     val_imagefolder = GrayscaleImageFolder('data/val', val_transforms)
-    val_loader = torch.utils.data.DataLoader(val_imagefolder, batch_size=16, shuffle=False)
+    val_loader = torch.utils.data.DataLoader(val_imagefolder, batch_size=args.batch_size, shuffle=False)
             
     # Move model and loss function to GPU
     if use_gpu: 
