@@ -68,8 +68,16 @@ def compute_prior_prob(image_ab):
 
 
 def compute_smoothed(z_true):
-    # flattened array of shape (224*224, 2)
-    h, w, _ = z_true.shape
+    """
+
+    Parameters
+    ----------
+    z_true : torch of dim (224, 224, 2)
+
+    Returns
+    -------
+
+    """
     image_a = z_true[:, :, 0].ravel()
     image_b = z_true[:, :, 1].ravel()
     image_ab = np.vstack((image_a, image_b)).T
@@ -77,7 +85,7 @@ def compute_smoothed(z_true):
     # distances and indices of the 5 nearest neighbour of the true image ab channel
     dists, ind = nearest.kneighbors(image_ab)
 
-    wts = np.exp(- dists ** 2) / (2 * sigma ** 2)
+    wts = np.exp(- dists ** 2 / (2 * sigma ** 2))
     wts = wts / np.sum(wts, axis=1)[:, np.newaxis]
     z_soft_encoding = np.zeros((image_ab.shape[0], q))
 
@@ -101,27 +109,39 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def to_rgb(input_grey, ab_input=None, save_path=None, save_name = None):
-    z_exp = torch.exp(torch.log(ab_input + eps) / temperature)
-    z_mean = (z_exp / z_exp.sum(axis=0)).mean(axis=0)
-    x_colorized = z_mean.cpu().numpy()
+def to_rgb(img_gray, img_smooth, save_path=None, save_name=None):
+    """
+
+    Parameters
+    ----------
+    img_gray : tensor of dim (1, 224, 224)
+    img_smooth : tensor of dim (313, 224, 224)
+    save_path : string
+    save_name : string
+
+    Returns
+    -------
+
+    """
+    z_exp = torch.exp(torch.log(img_smooth + eps) / temperature)
+    z_mean = (z_exp / z_exp.sum(axis=0)).reshape((q, h * w))
 
     q_a = pts_hull[:, 0].reshape(1, -1)
     q_b = pts_hull[:, 1].reshape(1, -1)
 
-    x_a = np.sum(x_colorized.reshape(-1, 1) * q_a, 1).reshape((h, w))
-    x_b = np.sum(x_colorized.reshape(-1, 1) * q_b, 1).reshape((h, w))
-    x_a += 128
-    x_b += 128
+    x_a = (z_mean.T * q_a).sum(axis=1).reshape((h, w))
+    x_b = (z_mean.T * q_b).sum(axis=1).reshape((h, w))
 
-    x_np = input_grey.cpu().numpy().reshape(h, w)
-    out_lab = np.zeros((h, w, 3), dtype=np.int32)
-    out_lab[:, :, 0] = x_np
+    x_np = img_gray.reshape(h, w)
+    out_lab = np.zeros((h, w, 3))
+
+    out_lab[:, :, 0] = x_np * 100
     out_lab[:, :, 1] = x_a
     out_lab[:, :, 2] = x_b
-    out_lab = out_lab.astype(np.uint8)
     img_rgb = lab2rgb(out_lab)
 
     if save_path is not None and save_name is not None:
         plt.imsave(arr=x_np, fname='{}{}'.format(save_path['grayscale'], save_name), cmap='gray')
         plt.imsave(arr=img_rgb, fname='{}{}'.format(save_path['colorized'], save_name))
+
+    return img_rgb

@@ -20,7 +20,6 @@ parser.add_argument('--batch_size', default=12, type=int, metavar='N', help='bat
 
 
 def main():
-    #global args, best_losses, use_gpu
     args = parser.parse_args()
     print('Arguments: {}'.format(args))
 
