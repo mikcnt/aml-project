@@ -10,13 +10,17 @@ from data_loader import GrayscaleImageFolder
 from fit import train, validate
 # For utilities
 import os, shutil, time, argparse
-from utils import AverageMeter, to_rgb
+from utils import *
+
 
 # Parse arguments and prepare program
 parser = argparse.ArgumentParser(description='Training and Using ColorizationNet')
 parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path to .pth file checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='use this flag to validate without training')
 parser.add_argument('--batch_size', default=12, type=int, metavar='N', help='batch size (default: 12)')
+parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of epochs (default: 100)')
+parser.add_argument('--learning_rate', default=3e-5, type=int, metavar='N', help='learning rate (default 3e-5')
+parser.add_argument('--weight_decay', default=1e-3, type=int, metavar='N', help='learning rate (default 3e-5')
 
 
 def main():
@@ -31,7 +35,7 @@ def main():
 
     # Loss and optimizer definition
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-2, weight_decay=0.0)
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
     # Resume training if checkpoint path is given
     if args.resume:
@@ -48,14 +52,20 @@ def main():
             return
 
     # Training data
-    train_transforms = transforms.Compose([transforms.RandomResizedCrop(224), transforms.RandomHorizontalFlip()])
+    train_transforms = transforms.Compose([transforms.Resize((h, w))])
     train_imagefolder = GrayscaleImageFolder('data/train', transform=train_transforms)
-    train_loader = torch.utils.data.DataLoader(train_imagefolder, batch_size=args.batch_size, shuffle=True)
+    train_loader = torch.utils.data.DataLoader(train_imagefolder,
+                                               batch_size=args.batch_size,
+                                               shuffle=True,
+                                               pin_memory=True)
 
     # Validation data
-    val_transforms = transforms.Compose([transforms.Resize(256), transforms.CenterCrop(224)])
+    val_transforms = transforms.Compose([transforms.Resize((h, w))])
     val_imagefolder = GrayscaleImageFolder('data/val', transform=val_transforms)
-    val_loader = torch.utils.data.DataLoader(val_imagefolder, batch_size=args.batch_size, shuffle=False)
+    val_loader = torch.utils.data.DataLoader(val_imagefolder,
+                                             batch_size=args.batch_size,
+                                             shuffle=False,
+                                             pin_memory=True)
             
     # Move model and loss function to GPU
     if use_gpu: 
@@ -68,7 +78,7 @@ def main():
     os.makedirs('checkpoints', exist_ok=True)
     save_images = True
     best_losses = 1e10
-    epochs = 100
+    epochs = args.epochs
 
     if not args.evaluate:
         # Train model
@@ -84,6 +94,7 @@ def main():
     else:
         with torch.no_grad():
             losses = validate(val_loader, model, criterion, save_images, 0, use_gpu)
+
 
 if __name__ == '__main__':
     main()

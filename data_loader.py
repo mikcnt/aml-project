@@ -6,7 +6,7 @@ from torchvision import datasets, transforms
 # For conversion
 from skimage.color import lab2rgb, rgb2lab, rgb2gray
 from skimage import io
-from utils import compute_smoothed
+from utils import *
 
 
 class GrayscaleImageFolder(datasets.ImageFolder):
@@ -27,12 +27,12 @@ class GrayscaleImageFolder(datasets.ImageFolder):
 
         # ab channel
         img_ab = img_lab[:, :, 1:3]
-        img_smooth = compute_smoothed(img_ab).transpose(transposed_dim)
-        img_ab = (img_ab + 128) / 255
-        img_ab = img_ab.transpose(transposed_dim)
+        img_smooth = compute_smoothed(img_ab)
 
         # numpy to torch
+        img_ab = img_ab.transpose(transposed_dim)
         img_ab = torch.from_numpy(img_ab).float()
+        img_ab = (img_ab + 128) / 255
         img_gray = torch.from_numpy(img_gray).unsqueeze(0).float()
 
         return img_gray, img_ab, img_smooth
