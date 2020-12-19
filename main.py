@@ -11,6 +11,7 @@ from fit import train, validate
 # For utilities
 import os, shutil, time, argparse
 from utils import *
+import pickle
 
 
 # Parse arguments and prepare program
@@ -79,23 +80,38 @@ def main():
     save_images = True
     best_losses = 1e10
     epochs = args.epochs
+    train_loss = {}
+    validate_loss = {}
 
     if not args.evaluate:
         # Train model
         for epoch in range(epochs):
             # Train for one epoch, then validate
-            train(train_loader, model, criterion, optimizer, epoch, use_gpu)
+            losses_avg = train(train_loader, model, criterion, optimizer, epoch, use_gpu)
+            train_loss[epoch] = int(losses_avg)
+
             with torch.no_grad():
                 losses = validate(val_loader, model, criterion, save_images, epoch, use_gpu)
+                validate_loss[epoch] = int(losses)
+
             # Save checkpoint and replace old best model if current model is better
             if losses < best_losses:
                 best_losses = losses
                 torch.save(model.state_dict(), 'checkpoints/best-model.pth')
+
+            with open("train_loss.pkl", "wb") as f:
+                pickle.dump(train_loss, f)
+
+            with open("validate_loss.pkl", "wb") as f:
+                pickle.dump(validate_loss, f)
+
+            if epoch % 25 == 0:
+                torch.save(model.state_dict(), 'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, losses))
     else:
         with torch.no_grad():
             losses = validate(val_loader, model, criterion, save_images, 0, use_gpu)
 
-    torch.save(model.state_dict(), 'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, losses))
+
 
 
 if __name__ == '__main__':
