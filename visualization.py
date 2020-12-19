@@ -21,7 +21,7 @@ def get_img(filename):
 
 
 def get_img_prediction(model, pathname):
-    img = np.array(Image.open(pathname))
+    img = np.array(Image.open(pathname).convert('RGB'))
     img_lab = rgb2lab(img)
     img_gray = img_lab[:, :, 0] / 100
     img_gray_tensor = torch.from_numpy(resize(img_gray, (224, 224))).unsqueeze(0).float()
@@ -99,14 +99,14 @@ while True:
         ]
         window["-FILE LIST-"].update(fnames)
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
-        try:
-            filename = os.path.join(
-                values["-FOLDER-"], values["-FILE LIST-"][0]
-            )
-            window[image_orig_str].update(data=get_img(filename))
-            window[image_pred_str].update(data=get_img_prediction(model, filename))
+        #try:
+        filename = os.path.join(
+            values["-FOLDER-"], values["-FILE LIST-"][0]
+        )
+        window[image_orig_str].update(data=get_img(filename))
+        window[image_pred_str].update(data=get_img_prediction(model, filename))
 
-        except Exception as e:
-            print(e)
+        #except Exception as e:
+        #    print(e)
 
 window.close()

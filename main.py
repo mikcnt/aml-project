@@ -22,6 +22,7 @@ parser.add_argument('--batch_size', default=12, type=int, metavar='N', help='bat
 parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of epochs (default: 100)')
 parser.add_argument('--learning_rate', default=3e-5, type=int, metavar='N', help='learning rate (default 3e-5')
 parser.add_argument('--weight_decay', default=1e-3, type=int, metavar='N', help='learning rate (default 3e-5')
+parser.add_argument('--data_dir', default='data/', type=str, metavar='N', help='dataset directory, should contain train/test subdirs')
 
 
 def main():
@@ -52,9 +53,12 @@ def main():
             print('Checkpoint filepath incorrect.')
             return
 
+    train_set_path = args.data_dir + '/train'
+    test_set_path = args.data_dir + '/test'
+
     # Training data
     train_transforms = transforms.Compose([transforms.Resize((h, w))])
-    train_imagefolder = GrayscaleImageFolder('data/train', transform=train_transforms)
+    train_imagefolder = GrayscaleImageFolder(train_set_path, transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_imagefolder,
                                                batch_size=args.batch_size,
                                                shuffle=True,
@@ -62,7 +66,7 @@ def main():
 
     # Validation data
     val_transforms = transforms.Compose([transforms.Resize((h, w))])
-    val_imagefolder = GrayscaleImageFolder('data/val', transform=val_transforms)
+    val_imagefolder = GrayscaleImageFolder(test_set_path, transform=val_transforms)
     val_loader = torch.utils.data.DataLoader(val_imagefolder,
                                              batch_size=args.batch_size,
                                              shuffle=False,
@@ -110,8 +114,6 @@ def main():
     else:
         with torch.no_grad():
             losses = validate(val_loader, model, criterion, save_images, 0, use_gpu)
-
-
 
 
 if __name__ == '__main__':

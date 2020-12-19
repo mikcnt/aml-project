@@ -70,6 +70,7 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
     batch_time, data_time, losses = AverageMeter(), AverageMeter(), AverageMeter()
 
     end = time.time()
+
     for i, (input_gray, input_ab, input_smooth) in enumerate(train_loader):
 
         # Use GPU if available
@@ -107,3 +108,5 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
                                                                   loss=losses))
 
     print('Finished training epoch {}'.format(epoch))
+
+    return losses.avg
