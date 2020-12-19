@@ -41,8 +41,6 @@ def main():
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
-
-
     train_set_path = os.path.join(args.data_dir, 'train')
     test_set_path = os.path.join(args.data_dir, 'val')
 
@@ -125,7 +123,7 @@ def main():
                 best_losses = losses
                 torch.save(checkpoint_dict, 'checkpoints/best-model.pth')
             elif epoch % 25 == 0:
-                torch.save(checkpoint_dict, 'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, losses))
+                torch.save(checkpoint_dict, 'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
     else:
         with torch.no_grad():
             validate(val_loader, model, criterion, save_images, 0, use_gpu)
