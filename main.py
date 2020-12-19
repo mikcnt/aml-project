@@ -66,12 +66,12 @@ def main():
                                              batch_size=args.batch_size,
                                              shuffle=False,
                                              pin_memory=True)
-            
+
     # Move model and loss function to GPU
     if use_gpu: 
         criterion = criterion.cuda()
         model = model.cuda()
-        
+
     # Make folders and set parameters
     os.makedirs('outputs/color', exist_ok=True)
     os.makedirs('outputs/gray', exist_ok=True)
@@ -90,10 +90,12 @@ def main():
             # Save checkpoint and replace old best model if current model is better
             if losses < best_losses:
                 best_losses = losses
-                torch.save(model.state_dict(), 'checkpoints/model-epoch-{}-losses-{:.3f}.pth'.format(epoch+1,losses))
+                torch.save(model.state_dict(), 'checkpoints/best-model.pth')
     else:
         with torch.no_grad():
             losses = validate(val_loader, model, criterion, save_images, 0, use_gpu)
+
+    torch.save(model.state_dict(), 'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, losses))
 
 
 if __name__ == '__main__':
