@@ -1,20 +1,4 @@
-# For plotting
-import numpy as np
-import matplotlib.pyplot as plt
-# For conversion
-from skimage.color import lab2rgb, rgb2lab, rgb2gray
-from skimage import io
-# For everything
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-# For our model
-import torchvision.models as models
-from model import ColorizationNet
-from torchvision import datasets, transforms
-from data_loader import GrayscaleImageFolder
-# For utilities
-import os, shutil, time, argparse
+import time
 from utils import *
 
 
@@ -44,8 +28,10 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
             for j in range(min(len(output_ab), 10)):  # save at most 10 images
                 save_path = {'grayscale': 'outputs/gray/', 'colorized': 'outputs/color/'}
                 save_name = 'img-{}-epoch-{}.jpg'.format(i * val_loader.batch_size + j, epoch)
-                gray_smooth_tensor2rgb(input_gray[j].cpu(), img_smooth=output_ab[j].detach().cpu(), save_path=save_path,
-                       save_name=save_name)
+                gray_smooth_tensor2rgb(input_gray[j].cpu(),
+                                       img_smooth=output_ab[j].detach().cpu(),
+                                       save_path=save_path,
+                                       save_name=save_name)
 
         # Record time to do forward passes and save images
         batch_time.update(time.time() - end)
@@ -74,7 +60,8 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
     for i, (input_gray, input_ab, input_smooth) in enumerate(train_loader):
 
         # Use GPU if available
-        if use_gpu: input_gray, input_ab, input_smooth = input_gray.cuda(), input_ab.cuda(), input_smooth.cuda()
+        if use_gpu:
+            input_gray, input_ab, input_smooth = input_gray.cuda(), input_ab.cuda(), input_smooth.cuda()
 
         # Record time to load data (above)
         data_time.update(time.time() - end)

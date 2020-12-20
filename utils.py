@@ -1,9 +1,8 @@
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
-from skimage.color import lab2rgb, rgb2lab, rgb2gray
+from skimage.color import lab2rgb
 from scipy.spatial import cKDTree
-from skimage.transform import resize
 
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
@@ -18,19 +17,24 @@ sigma = 5
 lambda_ = 0.5
 eps = 1e-5
 q = 313
-temperature = 0.38
 h, w = 224, 224
 
 
 def multicrossentropy_loss(z_pred, z_true):
     batch_size = z_pred.shape[0]
-    z_pred = z_pred.cuda()
-    z_true = z_true.cuda()
+    z_pred = z_pred
+    z_true = z_true
     z_true = z_true.reshape(batch_size, -1, q)
     q_star = z_true.argmax(axis=2)
 
+    use_gpu = z_pred.device.type == 'cuda'
+
     # rebalancing weighting term
-    weight = p_tilde_tensor[q_star].cuda()
+    weight = p_tilde_tensor[q_star]
+
+    if use_gpu:
+        weight = weight.cuda()
+
     min_values = z_pred.min(axis=1).values.unsqueeze(1)
     z_pred_shifted = z_pred - min_values
     z_pred_shifted = z_pred_shifted + eps
@@ -135,7 +139,38 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def gray_smooth_tensor2rgb(img_gray, img_smooth, save_path=None, save_name=None):
+def gray_smooth_tensor2lab(img_gray, img_smooth, temperature=0.38):
+    """
+
+        Parameters
+        ----------
+        img_gray : tensor of dim (1, 224, 224)
+        img_smooth : tensor of dim (313, 224, 224)
+
+        Returns
+        -------
+
+        """
+    z_exp = torch.exp(torch.log(img_smooth + eps) / temperature)
+    z_mean = (z_exp / z_exp.sum(axis=0)).reshape((q, h * w))
+
+    q_a = pts_hull[:, 0].reshape(1, -1)
+    q_b = pts_hull[:, 1].reshape(1, -1)
+
+    x_a = (z_mean.T * q_a).sum(axis=1).reshape((h, w))
+    x_b = (z_mean.T * q_b).sum(axis=1).reshape((h, w))
+
+    x_np = img_gray.reshape(h, w)
+
+    out_lab = np.zeros((h, w, 3))
+    out_lab[:, :, 0] = x_np * 100
+    out_lab[:, :, 1] = x_a.detach().cpu().numpy()
+    out_lab[:, :, 2] = x_b.detach().cpu().numpy()
+
+    return out_lab
+
+
+def gray_smooth_tensor2rgb(img_gray, img_smooth, temperature=0.38, save_path=None, save_name=None):
     """
 
     Parameters
@@ -164,7 +199,6 @@ def gray_smooth_tensor2rgb(img_gray, img_smooth, save_path=None, save_name=None)
     out_lab[:, :, 0] = x_np * 100
     out_lab[:, :, 1] = x_a.cpu().numpy()
     out_lab[:, :, 2] = x_b.cpu().numpy()
-
 
     img_rgb = lab2rgb(out_lab)
 
@@ -195,4 +229,5 @@ def plot_comparison(img_gray, img_ab, img_smooth):
         prediction_rgb = gray_smooth_tensor2rgb(img_gray[i], img_smooth[i])
         axs[i, 0].imshow(img_true)
         axs[i, 1].imshow(prediction_rgb)
+
 

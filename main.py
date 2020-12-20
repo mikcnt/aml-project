@@ -1,17 +1,11 @@
-# For everything
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
-# For our model
-import torchvision.models as models
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from model import ColorizationNet
-from torchvision import datasets, transforms
+from torchvision import transforms
 from data_loader import GrayscaleImageFolder
 from fit import train, validate
-# For utilities
-import os, shutil, time, argparse
+import os, argparse
 from utils import *
-import pickle
 
 
 # Parse arguments and prepare program
@@ -20,9 +14,10 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH', help='path
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true', help='use this flag to validate without training')
 parser.add_argument('--batch_size', default=12, type=int, metavar='N', help='batch size (default: 12)')
 parser.add_argument('--epochs', default=100, type=int, metavar='N', help='number of epochs (default: 100)')
-parser.add_argument('--learning_rate', default=3e-5, type=int, metavar='N', help='learning rate (default 3e-5')
+parser.add_argument('--learning_rate', default=3e-5, type=float, metavar='N', help='learning rate (default 3e-5')
 parser.add_argument('--weight_decay', default=1e-3, type=int, metavar='N', help='learning rate (default 3e-5')
 parser.add_argument('--data_dir', default='data', type=str, metavar='N', help='dataset directory, should contain train/test subdirs')
+parser.add_argument('--use_gpu', default=False, type=bool, metavar='B', help='specify whether to use GPU')
 
 
 def main():
@@ -30,7 +25,8 @@ def main():
     print('Arguments: {}'.format(args))
 
     # Check if GPU is available
-    use_gpu = torch.cuda.is_available()
+    use_gpu = args.use_gpu and torch.cuda.is_available()
+    #  use_gpu = torch.cuda.is_available()
 
     start_epoch = 0
 
@@ -39,7 +35,11 @@ def main():
 
     # Loss and optimizer definition
     criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=args.learning_rate,
+                                 weight_decay=args.weight_decay)
+
+    scheduler = ReduceLROnPlateau(optimizer, 'min')
 
     train_set_path = os.path.join(args.data_dir, 'train')
     test_set_path = os.path.join(args.data_dir, 'val')
@@ -49,16 +49,14 @@ def main():
     train_imagefolder = GrayscaleImageFolder(train_set_path, transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_imagefolder,
                                                batch_size=args.batch_size,
-                                               shuffle=True,
-                                               pin_memory=True)
+                                               shuffle=True)
 
     # Validation data
     val_transforms = transforms.Compose([transforms.Resize((h, w))])
     val_imagefolder = GrayscaleImageFolder(test_set_path, transform=val_transforms)
     val_loader = torch.utils.data.DataLoader(val_imagefolder,
                                              batch_size=args.batch_size,
-                                             shuffle=False,
-                                             pin_memory=True)
+                                             shuffle=False)
 
     # Make folders and set parameters
     os.makedirs('outputs/color', exist_ok=True)
@@ -109,6 +107,9 @@ def main():
                 losses = validate(val_loader, model, criterion, save_images, epoch, use_gpu)
                 validate_loss[epoch] = int(losses)
 
+            # cyclical learning rate
+            scheduler.step(losses)
+
             checkpoint_dict = {
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
@@ -122,7 +123,7 @@ def main():
             if losses < best_losses:
                 best_losses = losses
                 torch.save(checkpoint_dict, 'checkpoints/best-model.pth')
-            elif epoch % 25 == 0:
+            elif epoch % 5 == 0:
                 torch.save(checkpoint_dict, 'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
     else:
         with torch.no_grad():
