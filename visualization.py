@@ -3,6 +3,9 @@ import os.path
 from PIL import Image, ImageTk
 from model import ColorizationNet
 from utils import *
+from skimage.color import rgb2lab
+from skimage.transform import resize
+import torch
 
 img_size = (350, 350)
 img_box_size = (800, 350)

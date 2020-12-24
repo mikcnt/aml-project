@@ -1,11 +1,5 @@
-# For everything
-import numpy as np
-import torch
-# For dataset class
-from torchvision import datasets, transforms
-# For conversion
-from skimage.color import lab2rgb, rgb2lab, rgb2gray
-from skimage import io
+from torchvision import datasets
+from skimage.color import rgb2lab
 from utils import *
 
 

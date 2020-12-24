@@ -18,7 +18,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=3, stride=2, padding=1, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(128)
+            nn.BatchNorm2d(128),
         )
 
         self.model3 = nn.Sequential(
@@ -28,7 +28,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(256, 256, kernel_size=3, stride=2, padding=1, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(256)
+            nn.BatchNorm2d(256),
         )
 
         self.model4 = nn.Sequential(
@@ -38,7 +38,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(512, 512, kernel_size=3, padding=1, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(512)
+            nn.BatchNorm2d(512),
         )
 
         self.model5 = nn.Sequential(
@@ -48,7 +48,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(512)
+            nn.BatchNorm2d(512),
         )
 
         self.model6 = nn.Sequential(
@@ -58,7 +58,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(512, 512, kernel_size=3, dilation=2, padding=2, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(512)
+            nn.BatchNorm2d(512),
         )
 
         self.model7 = nn.Sequential(
@@ -68,7 +68,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(256)
+            nn.BatchNorm2d(256),
         )
 
         self.model8 = nn.Sequential(
@@ -79,7 +79,7 @@ class ColorizationNet(nn.Module):
             nn.ReLU(),
             nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(),
-            nn.BatchNorm2d(128)
+            nn.BatchNorm2d(128),
         )
 
         self.model9 = nn.Sequential(
