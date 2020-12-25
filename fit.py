@@ -18,7 +18,6 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
 
         # Run model and record loss
         output_ab = model(input_gray)
-        # loss = criterion(output_ab, input_ab)
         loss = multicrossentropy_loss(output_ab, input_smooth)
         losses.update(loss.item(), input_gray.size(0))
 

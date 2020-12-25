@@ -3,6 +3,9 @@ import torch
 import matplotlib.pyplot as plt
 from skimage.color import lab2rgb
 from scipy.spatial import cKDTree
+from skimage.color import rgb2lab
+from skimage.transform import resize
+from PIL import Image, ImageTk
 
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
@@ -231,3 +234,85 @@ def plot_comparison(img_gray, img_ab, img_smooth):
         axs[i, 1].imshow(prediction_rgb)
 
 
+# ----------- FUNCTIONS FOR GUI VISUALIZATION ----------- #
+
+
+def get_img(filename, ):
+    """ Generate png image from jpg """
+    img = Image.open(filename).resize((h, w))
+    return ImageTk.PhotoImage(img)
+
+
+def load_img_np(pathname):
+    return np.array(Image.open(pathname).convert('RGB'))
+
+
+def get_img_prediction(model, pathname):
+    img = load_img_np(pathname)
+    img_original_size = img.shape[:2]
+    img_lab = rgb2lab(img)
+    img_gray = img_lab[:, :, 0] / 100
+    img_gray_small = resize(img_gray, (h, w))
+    img_gray_tensor = torch.from_numpy(img_gray_small).unsqueeze(0).float()
+    img_gray_batch = img_gray_tensor.unsqueeze(0)
+    img_smooth = model(img_gray_batch)[0]
+
+    img_lab = gray_smooth_tensor2lab(img_gray_small, img_smooth)
+    img_lab_resized = resize(img_lab, img_original_size)
+    img_gray = img_gray * 100
+    img_lab_resized[:, :, 0] = img_gray
+    img_rgb = resize(lab2rgb(img_lab_resized), img_original_size)
+    img_from_array = (img_rgb * 255).astype(np.uint8)
+
+    return img_from_array
+
+
+def get_img_prediction_as_tk(model, pathname, img_size):
+    """
+    Parameters
+    ----------
+    model : pyTorch pretrained model
+    pathname : target img pathname
+    img_size : target img size
+
+    Returns
+    -------
+        an image object that can be visualized in PySimpleGUI
+    """
+    img_pred = get_img_prediction(model, pathname)
+    img_pred = Image.fromarray(img_pred).resize(img_size)
+    return ImageTk.PhotoImage(image=img_pred)
+
+
+def threshold_l2_distance(true_img_ab, pred_img_ab):
+    """ Take two numpy representing the AB channel of the ground truth
+        and the predicted colorization, returns the raw accuracy as
+        defined in https://arxiv.org/abs/1603.08511 at page 11 """
+    n_pixels = true_img_ab.shape[0] * true_img_ab.shape[1]
+    thresholds = range(0, 150)
+    l2_dist = np.sqrt(((true_img_ab - pred_img_ab) ** 2).sum(axis=2))
+    func = lambda x: (l2_dist <= x).sum() / n_pixels
+    accs = sum([func(x) for x in thresholds])
+    return accs / 149
+
+
+def raw_accuracy(model, filename):
+    """
+    Parameters
+    ----------
+    model : pyTorch pretrained model
+    filename : target img pathname
+    Returns
+    -------
+        the raw accuracy of pathname image with its predicted colorization
+        as defined in https://arxiv.org/abs/1603.08511 page 11
+    """
+    true_img = load_img_np(filename)
+    true_img_lab = rgb2lab(true_img)
+    true_img_ab = true_img_lab[1:]
+
+    pred_img = get_img_prediction(model, filename)
+    pred_img_lab = rgb2lab(pred_img)
+    pred_img_ab = pred_img_lab[1:]
+
+    return threshold_l2_distance(true_img_ab, pred_img_ab)
