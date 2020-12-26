@@ -284,15 +284,14 @@ def get_img_prediction_as_tk(model, pathname, img_size):
     return ImageTk.PhotoImage(image=img_pred)
 
 
-def threshold_l2_distance(true_img_ab, pred_img_ab):
+def threshold_l2_distance_(true_img_ab, pred_img_ab):
     """ Take two numpy representing the AB channel of the ground truth
         and the predicted colorization, returns the raw accuracy as
         defined in https://arxiv.org/abs/1603.08511 at page 11 """
     n_pixels = true_img_ab.shape[0] * true_img_ab.shape[1]
-    thresholds = range(0, 150)
+    thresholds = np.arange(150)
     l2_dist = np.sqrt(((true_img_ab - pred_img_ab) ** 2).sum(axis=2))
-    func = lambda x: (l2_dist <= x).sum() / n_pixels
-    accs = sum([func(x) for x in thresholds])
+    accs = ((l2_dist[..., None] <= thresholds).sum(axis=2) / n_pixels).sum()
     return accs / 149
 
 
