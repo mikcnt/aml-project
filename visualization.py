@@ -88,8 +88,7 @@ while True:
         )
         window[image_orig_str].update(data=get_img(filename))
 
-        img_pred = get_img_prediction_as_tk(model, filename, img_size)
-        img_pred_tk = ImageTk.PhotoImage(image=img_pred)
+        img_pred_tk = get_img_prediction_as_tk(model, filename, img_size)
         window[image_pred_str].update(data=img_pred_tk)
 
         # except Exception as e:
