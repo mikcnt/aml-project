@@ -33,13 +33,13 @@ def reduce_dataset(original_dir, target_dir, size=None, train_pct=0.7,
     print("Copying {} files from {} to {}\n\n".format(size, original_dir, target_dir))
 
     for i in range(size):
-        previous_path = str(pathnames[i]).split("\\")[-1]
-        subdir = ""
+        parent_dir, filename = str(pathnames[i]).split("\\")[-2:]
 
+        subdir = ""
         if split:
             subdir = labels[i]
 
-        new_path = os.path.join(target_dir, subdir, previous_path)
+        new_path = os.path.join(target_dir, subdir, parent_dir, filename)
         os.makedirs(os.path.dirname(new_path), exist_ok=True)
         copyfile(pathnames[i], new_path)
 

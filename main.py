@@ -44,7 +44,7 @@ def main():
 
     # Training data
     train_transforms = transforms.Compose([transforms.RandomRotation(45), transforms.RandomHorizontalFlip(),
-                                           transforms.Resize((h, w))])
+                                       transforms.Resize((h, w))])
     train_imagefolder = GrayscaleImageFolder(train_set_path, transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_imagefolder,
                                                batch_size=args.batch_size,
