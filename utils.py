@@ -20,13 +20,11 @@ sigma = 5
 lambda_ = 0.5
 eps = 1e-5
 q = 313
-h, w = 224, 224
+h, w = 176, 176 # celeb dataset
 
 
 def multicrossentropy_loss(z_pred, z_true):
     batch_size = z_pred.shape[0]
-    z_pred = z_pred
-    z_true = z_true
     z_true = z_true.reshape(batch_size, -1, q)
     q_star = z_true.argmax(axis=2)
 
@@ -205,10 +203,6 @@ def gray_smooth_tensor2rgb(img_gray, img_smooth, temperature=0.38, save_path=Non
 
     img_rgb = lab2rgb(out_lab)
 
-    if save_path is not None and save_name is not None:
-        plt.imsave(arr=x_np, fname='{}{}'.format(save_path['grayscale'], save_name), cmap='gray')
-        plt.imsave(arr=img_rgb, fname='{}{}'.format(save_path['colorized'], save_name))
-
     return img_rgb
 
 
@@ -239,7 +233,7 @@ def plot_comparison(img_gray, img_ab, img_smooth):
 
 def get_img(filename, ):
     """ Generate png image from jpg """
-    img = Image.open(filename).resize((h, w))
+    img = Image.open(filename).resize((350, 350))
     return ImageTk.PhotoImage(img)
 
 

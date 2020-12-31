@@ -58,8 +58,7 @@ def main():
                                              shuffle=False)
 
     # Make folders and set parameters
-    os.makedirs('outputs/color', exist_ok=True)
-    os.makedirs('outputs/gray', exist_ok=True)
+    os.makedirs('outputs', exist_ok=True)
     os.makedirs('checkpoints', exist_ok=True)
     save_images = True
     best_losses = 1e10

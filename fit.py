@@ -1,4 +1,7 @@
 import time
+from torchvision import transforms
+import torchvision
+import os
 from utils import *
 
 
@@ -9,29 +12,29 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
     batch_time, data_time, losses = AverageMeter(), AverageMeter(), AverageMeter()
 
     end = time.time()
-    already_saved_images = False
+    images = []
+    # already_saved_images = False
     for i, (input_gray, input_ab, input_smooth) in enumerate(val_loader):
         data_time.update(time.time() - end)
 
         # Use GPU
-        if use_gpu: input_gray, input_ab, input_smooth = input_gray.cuda(), input_ab.cuda(), input_smooth.cuda()
+        if use_gpu:
+            input_gray, input_ab, input_smooth = input_gray.cuda(), input_ab.cuda(), input_smooth.cuda()
 
         # Run model and record loss
         output_ab = model(input_gray)
         loss = multicrossentropy_loss(output_ab, input_smooth)
         losses.update(loss.item(), input_gray.size(0))
 
-        # Save images to file
-        if save_images and not already_saved_images:
-            already_saved_images = True
-            for j in range(min(len(output_ab), 10)):  # save at most 10 images
-                save_path = {'grayscale': 'outputs/gray/', 'colorized': 'outputs/color/'}
-                save_name = 'img-{}-epoch-{}.jpg'.format(i * val_loader.batch_size + j, epoch)
-                gray_smooth_tensor2rgb(input_gray[j].cpu(),
-                                       img_smooth=output_ab[j].detach().cpu(),
-                                       save_path=save_path,
-                                       save_name=save_name)
+        # Create img grid
+        if len(images) <= 64:
+            for j in range(len(output_ab)):
+                if len(images) >= 64:
+                    break
+                images.append(gray_smooth_tensor2rgb(input_gray[j].cpu(),
+                                    img_smooth=output_ab[j].detach().cpu()))
 
+        
         # Record time to do forward passes and save images
         batch_time.update(time.time() - end)
         end = time.time()
@@ -43,6 +46,15 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'.format(i, len(val_loader), batch_time=batch_time,
                                                                   loss=losses))
 
+    # Save img grid to file
+    images = [transforms.ToTensor()(img) for img in images]
+    grid_img = torchvision.utils.make_grid(images, nrow=8)
+    path_folder = 'outputs'
+    path_file = 'output-epoch-{}.jpg'.format(epoch)
+    path = os.path.join(path_folder, path_file)
+    
+    torchvision.utils.save_image(grid_img, path)
+    
     print('Finished validation.')
     return losses.avg
 
