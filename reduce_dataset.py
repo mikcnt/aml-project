@@ -16,16 +16,17 @@ def get_shuffled_labels(size, train_pct, val_pct):
 def reduce_dataset(original_dir, target_dir, size=None, train_pct=0.7,
                    val_pct=0.2, split=True, shuffle=True):
 
-    pathnames = list(Path(original_dir).glob('**/*.jpg'))
+    filenames = list(Path(original_dir).glob('**/*.jpg'))
+    labels = None
 
     if size is None:
-        size = len(pathnames)
-    elif size > len(pathnames):
-        print("size should <= ", len(pathnames))
+        size = len(filenames)
+    elif size > len(filenames):
+        print("size should <= ", len(filenames))
         return None
 
     if shuffle:
-        random.shuffle(pathnames)
+        random.shuffle(filenames)
 
     if split:
         labels = get_shuffled_labels(size, train_pct, val_pct)
@@ -33,7 +34,7 @@ def reduce_dataset(original_dir, target_dir, size=None, train_pct=0.7,
     print("Copying {} files from {} to {}\n\n".format(size, original_dir, target_dir))
 
     for i in range(size):
-        parent_dir, filename = str(pathnames[i]).split("\\")[-2:]
+        parent_dir, filename = str(filenames[i]).split("\\")[-2:]
 
         subdir = ""
         if split:
@@ -41,7 +42,7 @@ def reduce_dataset(original_dir, target_dir, size=None, train_pct=0.7,
 
         new_path = os.path.join(target_dir, subdir, parent_dir, filename)
         os.makedirs(os.path.dirname(new_path), exist_ok=True)
-        copyfile(pathnames[i], new_path)
+        copyfile(filenames[i], new_path)
 
 
 if __name__ == "__main__":
