@@ -43,8 +43,15 @@ def main():
     test_set_path = os.path.join(args.data_dir, 'val')
 
     # Training data
-    train_transforms = transforms.Compose([transforms.RandomRotation(45), transforms.RandomHorizontalFlip(),
-                                       transforms.Resize((h, w))])
+    # train_transforms = transforms.Compose([transforms.RandomRotation(45), transforms.RandomHorizontalFlip(),
+    #                                    transforms.Resize((h, w))])
+    resize_crop = transforms.RandomApply(
+    nn.ModuleList([
+        transforms.Resize((h + h // 10, w + w // 10)), transforms.CenterCrop((h, w))
+    ]), p=0.2)
+
+    train_transforms = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.Resize((h, w)), resize_crop])
+    
     train_imagefolder = GrayscaleImageFolder(train_set_path, transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_imagefolder,
                                                batch_size=args.batch_size,
