@@ -85,10 +85,14 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
         # torch.save(output_smooth, "output_smooth.pth")
         # exit(0)
 
-        if criterion.type == 'crossentropy' or 'prob_diff':
+        if isinstance(criterion, MultiCrossEntropy):
             loss = criterion(output_smooth, input_smooth)
-        elif criterion.type == 'l2':
+        elif isinstance(criterion, nn.MSELoss):
             output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_smooth)
+
+            if use_gpu:
+                output_pred_ab = output_pred_ab.cuda()
+
             loss = criterion(output_pred_ab, input_ab)
         
         losses.update(loss.item(), input_gray.size(0))

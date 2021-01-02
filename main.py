@@ -21,7 +21,8 @@ parser.add_argument('--data_dir', default='data', type=str, metavar='N',
                     help='dataset directory, should contain train/test subdirs')
 parser.add_argument('--use_gpu', default=True, type=bool, metavar='B', help='specify whether to use GPU')
 parser.add_argument('--loss', default='crossentropy', type=str, metavar='string', help='specify target loss function')
-parser.add_argument('--alpha', default=.5, type=float, metavar='string', help='weighting factor in smoothing prior probability')
+parser.add_argument('--alpha', default=.5, type=float, metavar='string',
+                    help='weighting factor in smoothing prior probability')
 
 
 def main():
@@ -131,8 +132,9 @@ def main():
                 torch.save(checkpoint_dict, 'checkpoints/best-model.pth')
 
             # save model on each epoch
-            torch.save(checkpoint_dict,
-                       'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
+            if epoch % 5 == 0:
+                torch.save(checkpoint_dict,
+                           'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
     else:
         with torch.no_grad():
             validate(val_loader, model, criterion, save_images, 0, use_gpu)
