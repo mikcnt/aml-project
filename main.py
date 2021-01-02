@@ -46,12 +46,12 @@ def main():
     # train_transforms = transforms.Compose([transforms.RandomRotation(45), transforms.RandomHorizontalFlip(),
     #                                    transforms.Resize((h, w))])
     resize_crop = transforms.RandomApply(
-    nn.ModuleList([
-        transforms.Resize((h + h // 10, w + w // 10)), transforms.CenterCrop((h, w))
-    ]), p=0.2)
+        nn.ModuleList([
+            transforms.Resize((h + h // 10, w + w // 10)), transforms.CenterCrop((h, w))
+        ]), p=0.2)
 
     train_transforms = transforms.Compose([transforms.RandomHorizontalFlip(), transforms.Resize((h, w)), resize_crop])
-    
+
     train_imagefolder = GrayscaleImageFolder(train_set_path, transform=train_transforms)
     train_loader = torch.utils.data.DataLoader(train_imagefolder,
                                                batch_size=args.batch_size,
@@ -125,9 +125,10 @@ def main():
             if losses < best_losses:
                 best_losses = losses
                 torch.save(checkpoint_dict, 'checkpoints/best-model.pth')
-            elif epoch % 5 == 0:
-                torch.save(checkpoint_dict,
-                           'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
+
+            # save model on each epoch
+            torch.save(checkpoint_dict,
+                       'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
     else:
         with torch.no_grad():
             validate(val_loader, model, criterion, save_images, 0, use_gpu)
