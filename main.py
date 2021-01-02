@@ -21,6 +21,7 @@ parser.add_argument('--data_dir', default='data', type=str, metavar='N',
                     help='dataset directory, should contain train/test subdirs')
 parser.add_argument('--use_gpu', default=True, type=bool, metavar='B', help='specify whether to use GPU')
 parser.add_argument('--loss', default='crossentropy', type=str, metavar='string', help='specify target loss function')
+parser.add_argument('--alpha', default=.5, type=float, metavar='string', help='weighting factor in smoothing prior probability')
 
 
 def main():
@@ -36,7 +37,11 @@ def main():
     model = ColorizationNet()
 
     # Loss and optimizer definition
-    criterion = CustomLoss(args.loss)
+    if args.loss == 'crossentropy':
+        criterion = MultiCrossEntropy(args.alpha)
+    elif args.loss == 'l2':
+        criterion = nn.MSELoss()
+
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.learning_rate,
                                  weight_decay=args.weight_decay)

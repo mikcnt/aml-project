@@ -7,13 +7,13 @@ from scipy.spatial import cKDTree
 from skimage.color import rgb2lab
 from skimage.transform import resize
 from PIL import Image, ImageTk
-from torch.nn.functional import mse_loss
 
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
 
 pts_hull = torch.from_numpy(np.load("data/pts_in_hull.npy"))
-p_tilde_tensor = torch.from_numpy(np.load('data/prior_factor.npy'))
+prior_factor = torch.from_numpy(np.load('data/prior_factor.npy'))  # vector w of Eq.4
+prior_prob_smoothed = torch.from_numpy(np.load('data/prior_prob_smoothed.npy'))  # p tilde of Eq.4
 tree = cKDTree(pts_hull)
 
 # parameters for smoothed soft-encoding
@@ -25,34 +25,51 @@ q = 313
 h, w = 176, 176  # celeb dataset
 
 
-# class CustomLoss(object):
-#     def __init__(self, type='crossentropy'):
-#         self.type = type
-#
-#         if type == 'crossentropy':
-#             self.loss = multicrossentropy_loss
-#         elif type == 'l2':
-#             self.loss = l2_loss
-#         else:
-#             print("Invalida loss function selected")
-#             exit(-1)
+class MultiCrossEntropy(nn.Module):
+    def __init__(self, alpha=.5):
+        super(MultiCrossEntropy, self).__init__()
+        self.prior_factor = prior_factor
 
-class CustomLoss(nn.Module):
-    def __init__(self, dist_type='crossentropy'):
-        super(CustomLoss, self).__init__()
-        self.dist_type = dist_type
-        if dist_type == 'crossentropy':
-            self.loss = multicrossentropy_loss
-        elif dist_type == 'prob_difference':
-            self.loss = mse_loss
-        elif dist_type == 'l2':
-            self.loss = l2_loss
-        else:
-            print("Invalid loss function selected")
-            exit(-1)
+        if alpha != .5:
+            self.prior_factor = compute_prior_factor(alpha)
+
+    def multicrossentropy_loss(self, z_pred, z_true):
+        """
+
+        Parameters
+        ----------
+        z_pred : torch tensor of dim (batch_size, h, w, q)
+            image colorization probability distribution output by the model
+        z_true : torch tensor of dim (batch_size, h, w, q)
+            original colorization smoothed with gaussian filter
+        Returns
+        -------
+
+        """
+        batch_size = z_pred.shape[0]
+        z_true = z_true.reshape(batch_size, -1, q)
+        q_star = z_true.argmax(axis=2)
+
+        use_gpu = z_pred.device.type == 'cuda'
+
+        # rebalancing weighting term
+        weight = self.prior_factor[q_star]
+
+        if use_gpu:
+            weight = weight.cuda()
+
+        min_values = z_pred.min(axis=1).values.unsqueeze(1)
+        z_pred_shifted = z_pred - min_values
+        z_pred_shifted = z_pred_shifted + eps
+        z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=1).unsqueeze(1)
+        z_pred_shifted = z_pred_shifted.reshape(batch_size, -1, q)
+        loss = (z_true * torch.log(z_pred_shifted)).sum(axis=2)
+        loss = - loss * weight
+
+        return loss.sum(axis=1).sum()
 
     def forward(self, z_pred, z_true):
-        return self.loss(z_pred, z_true)
+        return self.multicrossentropy_loss(z_pred, z_true)
 
 
 def l2_loss(output_batch_ab, input_batch_ab):
@@ -72,40 +89,10 @@ def l2_loss(output_batch_ab, input_batch_ab):
     return torch.sqrt(((output_batch_ab - input_batch_ab)**2).sum(axis=1)).sum()
 
 
-def multicrossentropy_loss(z_pred, z_true):
-    """
-
-    Parameters
-    ----------
-    z_pred : torch tensor of dim (batch_size, h, w, q)
-        image colorization probability distribution output by the model
-    z_true : torch tensor of dim (batch_size, h, w, q)
-        original colorization smoothed with gaussian filter
-    Returns
-    -------
-
-    """
-    batch_size = z_pred.shape[0]
-    z_true = z_true.reshape(batch_size, -1, q)
-    q_star = z_true.argmax(axis=2)
-
-    use_gpu = z_pred.device.type == 'cuda'
-
-    # rebalancing weighting term
-    weight = p_tilde_tensor[q_star]
-
-    if use_gpu:
-        weight = weight.cuda()
-
-    min_values = z_pred.min(axis=1).values.unsqueeze(1)
-    z_pred_shifted = z_pred - min_values
-    z_pred_shifted = z_pred_shifted + eps
-    z_pred_shifted = z_pred_shifted / z_pred_shifted.sum(axis=1).unsqueeze(1)
-    z_pred_shifted = z_pred_shifted.reshape(batch_size, -1, q)
-    loss = (z_true * torch.log(z_pred_shifted)).sum(axis=2)
-    loss = - loss * weight
-
-    return loss.sum(axis=1).sum()
+def compute_prior_factor(alpha=.5):
+    """ Compute prior factor according to Eq.4 (alpha = lambda) """
+    weight = ((1 - alpha) * prior_prob_smoothed + alpha / q)**(-1)
+    return weight / (prior_prob_smoothed * weight).sum()
 
 
 def gray_ab_tensor2rgb(img_gray, img_ab):
@@ -208,7 +195,6 @@ def gray_smooth_to_ab_tensor(img_gray, img_smooth):
     ----------
     img_gray
     img_smooth
-    temperature
 
     Returns
     -------
@@ -302,8 +288,6 @@ def gray_smooth_tensor2rgb(img_gray, img_smooth, temperature=0.38):
     temperature
     img_gray : tensor of dim (1, 224, 224)
     img_smooth : tensor of dim (313, 224, 224)
-    save_path : string
-    save_name : string
 
     Returns
     -------
