@@ -1,11 +1,13 @@
 import numpy as np
 import torch
+import torch.nn as nn
 import matplotlib.pyplot as plt
 from skimage.color import lab2rgb
 from scipy.spatial import cKDTree
 from skimage.color import rgb2lab
 from skimage.transform import resize
 from PIL import Image, ImageTk
+from torch.nn.functional import mse_loss
 
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
@@ -20,10 +22,69 @@ sigma = 5
 lambda_ = 0.5
 eps = 1e-5
 q = 313
-h, w = 176, 176 # celeb dataset
+h, w = 176, 176  # celeb dataset
+
+
+# class CustomLoss(object):
+#     def __init__(self, type='crossentropy'):
+#         self.type = type
+#
+#         if type == 'crossentropy':
+#             self.loss = multicrossentropy_loss
+#         elif type == 'l2':
+#             self.loss = l2_loss
+#         else:
+#             print("Invalida loss function selected")
+#             exit(-1)
+
+class CustomLoss(nn.Module):
+    def __init__(self, dist_type='crossentropy'):
+        super(CustomLoss, self).__init__()
+        self.dist_type = dist_type
+        if dist_type == 'crossentropy':
+            self.loss = multicrossentropy_loss
+        elif dist_type == 'prob_difference':
+            self.loss = mse_loss
+        elif dist_type == 'l2':
+            self.loss = l2_loss
+        else:
+            print("Invalid loss function selected")
+            exit(-1)
+
+    def forward(self, z_pred, z_true):
+        return self.loss(z_pred, z_true)
+
+
+def l2_loss(output_batch_ab, input_batch_ab):
+    """
+
+    Parameters
+    ----------
+    output_batch_ab : torch tensor of dim (batch_size, 2, h, w)
+        image colorization probability distribution output by the model
+    input_batch_ab : torch tensor of dim (batch_size, h, w, q)
+        original colorization smoothed with gaussian filter
+
+    Returns
+    -------
+        L2 loss according to Eq.1 at page 4 of Zhang et al.
+    """
+    return torch.sqrt(((output_batch_ab - input_batch_ab)**2).sum(axis=1)).sum()
 
 
 def multicrossentropy_loss(z_pred, z_true):
+    """
+
+    Parameters
+    ----------
+    z_pred : torch tensor of dim (batch_size, h, w, q)
+        image colorization probability distribution output by the model
+    z_true : torch tensor of dim (batch_size, h, w, q)
+        original colorization smoothed with gaussian filter
+    Returns
+    -------
+
+    """
     batch_size = z_pred.shape[0]
     z_true = z_true.reshape(batch_size, -1, q)
     q_star = z_true.argmax(axis=2)
@@ -74,7 +135,7 @@ def compute_smoothed_tensor(img_ab):
 
         Parameters
         ----------
-        img_ab : torch of dim (224, 224, 2)
+        img_ab : torch of dim (h, w, 2)
 
         Returns
         -------
@@ -140,23 +201,85 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def gray_smooth_tensor2lab(img_gray, img_smooth, temperature=0.38):
+def gray_smooth_to_ab_tensor(img_gray, img_smooth):
+    """
+
+    Parameters
+    ----------
+    img_gray
+    img_smooth
+    temperature
+
+    Returns
+    -------
+        tensor
+    """
+    img_lab = gray_smooth_tensor2lab_npy(img_gray, img_smooth)
+    img_ab = img_lab[..., 1:]
+    return torch.tensor(img_ab.transpose((2, 0, 1)))
+
+
+def ab_tensor_from_graysmooth(batch_gray, batch_smooth, temperature=.38):
+    """
+
+    Parameters
+    ----------
+    batch_gray : tensor batch of dim (batch_size, 1, h, w)
+    batch_smooth : tensor batch of dim (batch_size, 331, h, w)
+    temperature : float
+
+    Returns
+    -------
+        a tensor batch of dim (batch_size, 2, h, w) representing
+        the smoothed point estimate in the ab channel
+    """
+    use_gpu = batch_gray.device.type == 'cuda'
+
+    batch_size = batch_gray.shape[0]
+    z_exp = torch.exp(torch.log(batch_smooth + eps) / temperature)
+    z_mean = torch.div(z_exp, z_exp.sum(axis=1).unsqueeze(1))
+    z_mean = z_mean.reshape((batch_size, q, h * w))
+    q_a = pts_hull[:, 0].reshape(1, -1)
+    q_b = pts_hull[:, 1].reshape(1, -1)
+
+    if use_gpu:
+        q_a = q_a.cuda()
+        q_b = q_b.cuda()
+
+    x_a = (z_mean.T * q_a.unsqueeze(2)).sum(axis=1).reshape((batch_size, h, w))
+    x_b = (z_mean.T * q_b.unsqueeze(2)).sum(axis=1).reshape((batch_size, h, w))
+
+    batch_ab = torch.zeros((batch_size, 2, h, w))
+    batch_ab[:, 0, ...] = x_a
+    batch_ab[:, 1, ...] = x_b
+
+    return batch_ab
+
+
+def gray_smooth_tensor2lab_npy(img_gray, img_smooth, temperature=0.38):
     """
 
         Parameters
         ----------
-        img_gray : tensor of dim (1, 224, 224)
-        img_smooth : tensor of dim (313, 224, 224)
+        temperature
+        img_gray : tensor of dim (1, h, w)
+        img_smooth : tensor of dim (313, h, w)
 
         Returns
         -------
 
         """
+    use_gpu = img_gray.device.type == 'cuda'
+
     z_exp = torch.exp(torch.log(img_smooth + eps) / temperature)
     z_mean = (z_exp / z_exp.sum(axis=0)).reshape((q, h * w))
 
     q_a = pts_hull[:, 0].reshape(1, -1)
     q_b = pts_hull[:, 1].reshape(1, -1)
+
+    if use_gpu:
+        q_a = q_a.cuda()
+        q_b = q_b.cuda()
 
     x_a = (z_mean.T * q_a).sum(axis=1).reshape((h, w))
     x_b = (z_mean.T * q_b).sum(axis=1).reshape((h, w))
@@ -164,18 +287,19 @@ def gray_smooth_tensor2lab(img_gray, img_smooth, temperature=0.38):
     x_np = img_gray.reshape(h, w)
 
     out_lab = np.zeros((h, w, 3))
-    out_lab[:, :, 0] = x_np * 100
+    out_lab[:, :, 0] = x_np.detach().cpu().numpy() * 100
     out_lab[:, :, 1] = x_a.detach().cpu().numpy()
     out_lab[:, :, 2] = x_b.detach().cpu().numpy()
 
     return out_lab
 
 
-def gray_smooth_tensor2rgb(img_gray, img_smooth, temperature=0.38, save_path=None, save_name=None):
+def gray_smooth_tensor2rgb(img_gray, img_smooth, temperature=0.38):
     """
 
     Parameters
     ----------
+    temperature
     img_gray : tensor of dim (1, 224, 224)
     img_smooth : tensor of dim (313, 224, 224)
     save_path : string
@@ -251,7 +375,7 @@ def get_img_prediction(model, pathname):
     img_gray_batch = img_gray_tensor.unsqueeze(0)
     img_smooth = model(img_gray_batch)[0]
 
-    img_lab = gray_smooth_tensor2lab(img_gray_small, img_smooth)
+    img_lab = gray_smooth_tensor2lab_npy(img_gray_small, img_smooth)
     img_lab_resized = resize(img_lab, img_original_size)
     img_gray = img_gray * 100
     img_lab_resized[:, :, 0] = img_gray

@@ -1,3 +1,4 @@
+import pickle
 import time
 from torchvision import transforms
 import torchvision
@@ -23,7 +24,7 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
 
         # Run model and record loss
         output_ab = model(input_gray)
-        loss = multicrossentropy_loss(output_ab, input_smooth)
+        loss = criterion.loss(output_ab, input_smooth)
         losses.update(loss.item(), input_gray.size(0))
 
         # Create img grid
@@ -34,7 +35,6 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
                 images.append(gray_smooth_tensor2rgb(input_gray[j].cpu(),
                                     img_smooth=output_ab[j].detach().cpu()))
 
-        
         # Record time to do forward passes and save images
         batch_time.update(time.time() - end)
         end = time.time()
@@ -78,10 +78,19 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
         data_time.update(time.time() - end)
 
         # Run forward pass
-        output_ab = model(input_gray)
+        output_smooth = model(input_gray)
+        # torch.save(input_ab, "input_ab.pth")
+        # torch.save(input_gray, "input_gray.pth")
+        # torch.save(input_smooth, "input_smooth.pth")
+        # torch.save(output_smooth, "output_smooth.pth")
+        # exit(0)
 
-        # loss = criterion(output_ab, input_ab)
-        loss = multicrossentropy_loss(output_ab, input_smooth)
+        if criterion.type == 'crossentropy' or 'prob_diff':
+            loss = criterion(output_smooth, input_smooth)
+        elif criterion.type == 'l2':
+            output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_smooth)
+            loss = criterion(output_pred_ab, input_ab)
+        
         losses.update(loss.item(), input_gray.size(0))
 
         # Compute gradient and optimize
