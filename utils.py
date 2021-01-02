@@ -19,7 +19,6 @@ tree = cKDTree(pts_hull)
 # parameters for smoothed soft-encoding
 n_points = 1000
 sigma = 5
-lambda_ = 0.5
 eps = 1e-5
 q = 313
 h, w = 176, 176  # celeb dataset
@@ -359,7 +358,7 @@ def get_img_prediction(model, pathname):
     img_gray_batch = img_gray_tensor.unsqueeze(0)
     img_smooth = model(img_gray_batch)[0]
 
-    img_lab = gray_smooth_tensor2lab_npy(img_gray_small, img_smooth)
+    img_lab = gray_smooth_tensor2lab_npy(img_gray_tensor, img_smooth)
     img_lab_resized = resize(img_lab, img_original_size)
     img_gray = img_gray * 100
     img_lab_resized[:, :, 0] = img_gray
@@ -397,6 +396,14 @@ def threshold_l2_distance(true_img_ab, pred_img_ab):
     return accs / 149
 
 
+def lab_image_from_file(filename):
+    """ Returns the ab channels from the image in filename """
+    true_img = load_img_np(filename)
+    true_img_lab = rgb2lab(true_img)
+
+    return true_img_lab
+
+
 def raw_accuracy(model, filename):
     """
     Parameters
@@ -408,10 +415,8 @@ def raw_accuracy(model, filename):
         the raw accuracy of pathname image with its predicted colorization
         as defined in https://arxiv.org/abs/1603.08511 page 11
     """
-    true_img = load_img_np(filename)
-    true_img_lab = rgb2lab(true_img)
+    true_img_lab = lab_image_from_file(filename)
     true_img_ab = true_img_lab[1:]
-
     pred_img = get_img_prediction(model, filename)
     pred_img_lab = rgb2lab(pred_img)
     pred_img_ab = pred_img_lab[1:]
