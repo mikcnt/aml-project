@@ -38,12 +38,23 @@ Once you have the files well organized, you can start the training directly from
 ```shell
 $ python3 main.py --batch_size 8 --data_dir data
 ```
+## Results
+There are several options when one wants to assess the quality of the trained network. The best possible option is to actually look at the images produced by the model itself. In fact, colorizing images can be seen as a multimodal problem, meaning that, for a single black and white image, there are multiple plausible colorizations. For this particular reason, human intervention during test time is probably the best option to discern bad models from good ones.
+
+In our particular case, we trained our model on a small subset (4800/1200/1200 split for train/val/test) of the [CelebA dataset](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html), using the cropped and aligned version of the images.
+
+The image below shows the behaviour of the model on a set of 8 images from the test set, that the model didn't see neither during training or validation time.
+
+<p align="center">
+  <img src="./gh_images/benchmark.jpg" alt="Sublime's custom image"/>
+</p>
+
 ## Repo structure
 The repository consists of the following files:
 
 **Scripts**:
 * __`main.py`__:
-    > Main script used to start the training and/or evaluation of the model. Run `python main.py -h` to show the complete list of flags.
+    > Main script used to start the training and/or evaluation of the model. Run `python3 main.py -h` to show the complete list of flags.
 * __`model.py`__:
     > Script containing the model class; the impleemntation is based on the one proposed on the paper by Zhang et al.
 * __`fit.py`__:
@@ -53,7 +64,7 @@ The repository consists of the following files:
 * __`utils.py`__:
     > Several functions used both during the training/validation phase and for the visualization GUI.
 * __`visualization.py`__:
-    > Script containing the implementation for the Python GUI to visualize a demo of a pre-trained model.
+    > Script containing the implementation for the Python GUI to visualize a demo of a pre-trained model. Specify a `.pth` file as model and select a directory that contains jpg images to colorize black and white versions of the images contained in the directory and to compare them with the ground truth.
 
 **Notebooks**:
 * __`loss_visualizer.ipynb`__:
