@@ -43,7 +43,7 @@ There are several options when one wants to assess the quality of the trained ne
 
 In our particular case, we trained our model on a small subset (4800/1200/1200 split for train/val/test) of the [CelebA dataset](http://mmlab.ie.cuhk.edu.hk/projects/CelebA.html), using the cropped and aligned version of the images.
 
-The image below shows the behaviour of the model on a set of 8 images from the test set, that the model didn't see neither during training or validation time.
+The image below shows the behaviour of the model trained for 71 epochs on a set of 8 images taken from the test set, that the model didn't see neither during training or validation time. First row is composed by the 8 ground truth images, second row is composed by the 8 images produced by the model.
 
 <p align="center">
   <img src="./gh_images/benchmark.jpg" alt="Sublime's custom image"/>
