@@ -59,10 +59,8 @@ The repository consists of the following files:
 * __`loss_visualizer.ipynb`__:
     > Notebook used to visualize the training and validation loss for a pre-trained model.
 
-**Directories**:
+**Other**:
 * __`objects`__:
     > Directory containing pickle objects used during training.
-
-**Other**:
 * __`requirements.txt`__:
     > A txt file containing the dependecies of the project; see the usage part for details.
