@@ -11,9 +11,9 @@ from PIL import Image, ImageTk
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
 
-pts_hull = torch.from_numpy(np.load("data/pts_in_hull.npy"))
-prior_factor = torch.from_numpy(np.load('data/prior_factor.npy'))  # vector w of Eq.4
-prior_prob_smoothed = torch.from_numpy(np.load('data/prior_prob_smoothed.npy'))  # p tilde of Eq.4
+pts_hull = torch.from_numpy(np.load("objects/pts_in_hull.npy"))
+prior_factor = torch.from_numpy(np.load('objects/prior_factor.npy'))  # vector w of Eq.4
+prior_prob_smoothed = torch.from_numpy(np.load('objects/prior_prob_smoothed.npy'))  # p tilde of Eq.4
 tree = cKDTree(pts_hull)
 
 # parameters for smoothed soft-encoding
