@@ -385,7 +385,7 @@ def get_img_prediction_as_tk(model, pathname, img_size):
     return ImageTk.PhotoImage(image=img_pred)
 
 
-def threshold_l2_distance(true_img_ab, pred_img_ab):
+def raw_accuracy(true_img_ab, pred_img_ab):
     """ Take two numpy representing the AB channel of the ground truth
         and the predicted colorization, returns the raw accuracy as
         defined in https://arxiv.org/abs/1603.08511 at page 11 """
@@ -396,6 +396,51 @@ def threshold_l2_distance(true_img_ab, pred_img_ab):
     return accs / 149
 
 
+def rebalance(img_ab):
+    """
+    Multiplies each pixel by its class probability according to the
+    quantized ab space
+
+    Parameters
+    ----------
+    img_ab : numpy of dim (h, w, 2)
+
+    Returns
+    -------
+    img_ab : numpy of dim (h, w, 2)
+    """
+    _, ind = tree.query(img_ab, k=1)  # pixel class in the quantized ab space
+    weight = prior_prob_smoothed[ind].unsqueeze(2).numpy()  # probability of each pixel
+    max_val = img_ab.max()
+    img_ab_bal = weight * img_ab
+    img_ab_bal += eps  # smooth to avoid division by 0
+    img_ab_bal = img_ab_bal / img_ab_bal.max() * max_val  # normalizing to retain L2 distance
+    img_ab_bal[np.isnan(img_ab)] = 0
+
+    return img_ab_bal
+
+
+def raw_accuracy_rebal(true_img_ab, pred_img_ab):
+    """ Computes threshold L2 distance with rebalancing of each pixel
+        in the ab space according to the class probability wrt to the
+        quantized ab space
+
+    Parameters
+    ----------
+    true_img_ab : numpy of dim (h, w, 2)
+    pred_img_ab : numpy of dim (h, w, 2)
+
+    Returns
+    -------
+    distance : float
+        defined at page 11 in Zhang et al. with re-weighting of each
+        pixel according to Eq.4 with lambda=0
+    """
+    true_img_ab = rebalance(true_img_ab)
+    pred_img_ab = rebalance(pred_img_ab)
+    return raw_accuracy(true_img_ab, pred_img_ab)
+
+
 def lab_image_from_file(filename):
     """ Returns the ab channels from the image in filename """
     true_img = load_img_np(filename)
@@ -404,21 +449,3 @@ def lab_image_from_file(filename):
     return true_img_lab
 
 
-def raw_accuracy(model, filename):
-    """
-    Parameters
-    ----------
-    model : pyTorch pretrained model
-    filename : target img pathname
-    Returns
-    -------
-        the raw accuracy of pathname image with its predicted colorization
-        as defined in https://arxiv.org/abs/1603.08511 page 11
-    """
-    true_img_lab = lab_image_from_file(filename)
-    true_img_ab = true_img_lab[1:]
-    pred_img = get_img_prediction(model, filename)
-    pred_img_lab = rgb2lab(pred_img)
-    pred_img_ab = pred_img_lab[1:]
-
-    return threshold_l2_distance(true_img_ab, pred_img_ab)
