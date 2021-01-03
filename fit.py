@@ -24,7 +24,17 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
 
         # Run model and record loss
         output_ab = model(input_gray)
-        loss = criterion.loss(output_ab, input_smooth)
+        
+        if isinstance(criterion, MultiCrossEntropy):
+            loss = criterion(output_ab, input_smooth)
+        elif isinstance(criterion, nn.MSELoss):
+            output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_ab)
+
+            if use_gpu:
+                output_pred_ab = output_pred_ab.cuda()
+
+            loss = criterion(output_pred_ab, input_ab)
+            
         losses.update(loss.item(), input_gray.size(0))
 
         # Create img grid
@@ -78,7 +88,7 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
         data_time.update(time.time() - end)
 
         # Run forward pass
-        output_smooth = model(input_gray)
+        output_ab = model(input_gray)
         # torch.save(input_ab, "input_ab.pth")
         # torch.save(input_gray, "input_gray.pth")
         # torch.save(input_smooth, "input_smooth.pth")
@@ -86,9 +96,9 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
         # exit(0)
 
         if isinstance(criterion, MultiCrossEntropy):
-            loss = criterion(output_smooth, input_smooth)
+            loss = criterion(output_ab, input_smooth)
         elif isinstance(criterion, nn.MSELoss):
-            output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_smooth)
+            output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_ab)
 
             if use_gpu:
                 output_pred_ab = output_pred_ab.cuda()
