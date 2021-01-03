@@ -52,7 +52,7 @@ The repository consists of the following files:
     > Script containing the class for the custom dataset used in the training phase.
 * __`utils.py`__:
     > Several functions used both during the training/validation phase and for the visualization GUI.
-* __`visualization.py`__):
+* __`visualization.py`__:
     > Script containing the implementation for the Python GUI to visualize a demo of a pre-trained model.
 
 **Notebooks**:
