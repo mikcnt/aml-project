@@ -20,7 +20,7 @@ parser.add_argument('--weight_decay', default=1e-3, type=int, metavar='N', help=
 parser.add_argument('--data_dir', default='data', type=str, metavar='N',
                     help='dataset directory, should contain train/test subdirs')
 parser.add_argument('--use_gpu', default=True, type=bool, metavar='B', help='specify whether to use GPU')
-parser.add_argument('--loss', default='crossentropy', type=str, metavar='string', help='specify target loss function')
+parser.add_argument('--loss', default='classification', type=str, metavar='string', help='specify target loss function')
 parser.add_argument('--alpha', default=.5, type=float, metavar='string',
                     help='weighting factor in smoothing prior probability')
 
@@ -35,13 +35,10 @@ def main():
     start_epoch = 0
 
     # Model definition
-    model = ColorizationNet()
+    model = ColorizationNet(args.loss)
 
     # Loss and optimizer definition
-    if args.loss == 'crossentropy':
-        criterion = MultiCrossEntropy(args.alpha)
-    elif args.loss == 'l2':
-        criterion = nn.MSELoss()
+    criterion = CustomLoss(args.loss, args.alpha)
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.learning_rate,

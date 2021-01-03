@@ -8,6 +8,10 @@ from skimage.color import rgb2lab
 from skimage.transform import resize
 from PIL import Image, ImageTk
 
+# constants used to make the model flexible for both regression and classification
+CLASSIFICATION = "classification"
+REGRESSION = "regression"
+
 # equations numbers in the following refer to Colorful Image Colorization, Zhang et al.
 # https://arxiv.org/abs/1603.08511
 
@@ -24,13 +28,18 @@ q = 313
 h, w = 176, 176  # celeb dataset
 
 
-class MultiCrossEntropy(nn.Module):
-    def __init__(self, alpha=.5):
-        super(MultiCrossEntropy, self).__init__()
+class CustomLoss(nn.Module):
+    def __init__(self, type='classification', alpha=.5):
+        super(CustomLoss, self).__init__()
         self.prior_factor = prior_factor
+        self.type = type
 
-        if alpha != .5:
-            self.prior_factor = compute_prior_factor(alpha)
+        if type == 'classification':
+            self.loss = self.multicrossentropy_loss
+            if alpha != .5:
+                self.prior_factor = compute_prior_factor(alpha)
+        elif type == 'regression':
+            self.loss = self.l2_loss
 
     def multicrossentropy_loss(self, z_pred, z_true):
         """
@@ -68,24 +77,23 @@ class MultiCrossEntropy(nn.Module):
         return loss.sum(axis=1).sum()
 
     def forward(self, z_pred, z_true):
-        return self.multicrossentropy_loss(z_pred, z_true)
+        return self.loss(z_pred, z_true)
 
+    def l2_loss(self, output_batch_ab, input_batch_ab):
+        """
 
-def l2_loss(output_batch_ab, input_batch_ab):
-    """
+        Parameters
+        ----------
+        output_batch_ab : torch tensor of dim (batch_size, 2, h, w)
+            image colorization probability distribution output by the model
+        input_batch_ab : torch tensor of dim (batch_size, h, w, q)
+            original colorization smoothed with gaussian filter
 
-    Parameters
-    ----------
-    output_batch_ab : torch tensor of dim (batch_size, 2, h, w)
-        image colorization probability distribution output by the model
-    input_batch_ab : torch tensor of dim (batch_size, h, w, q)
-        original colorization smoothed with gaussian filter
-
-    Returns
-    -------
-        L2 loss according to Eq.1 at page 4 of Zhang et al.
-    """
-    return torch.sqrt(((output_batch_ab - input_batch_ab)**2).sum(axis=1)).sum()
+        Returns
+        -------
+            L2 loss according to Eq.1 at page 4 of Zhang et al.
+        """
+        return torch.sqrt(((output_batch_ab - input_batch_ab)**2).sum(axis=1)).sum()
 
 
 def compute_prior_factor(alpha=.5):
@@ -393,7 +401,7 @@ def raw_accuracy(true_img_ab, pred_img_ab):
     thresholds = np.arange(150)
     l2_dist = np.sqrt(((true_img_ab - pred_img_ab) ** 2).sum(axis=2))
     accs = ((l2_dist[..., None] <= thresholds).sum(axis=2) / n_pixels).sum()
-    return accs / 149
+    return accs / 150
 
 
 def rebalance(img_ab):

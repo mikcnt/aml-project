@@ -24,17 +24,17 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
 
         # Run model and record loss
         output_ab = model(input_gray)
-        
-        if isinstance(criterion, MultiCrossEntropy):
+
+        if criterion.type == 'classification':
             loss = criterion(output_ab, input_smooth)
-        elif isinstance(criterion, nn.MSELoss):
-            output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_ab)
-
+            image2rgb = gray_smooth_tensor2rgb  # image to save epoch grids
+        elif criterion.type == 'regression':
             if use_gpu:
-                output_pred_ab = output_pred_ab.cuda()
+                output_ab = output_ab.cuda()
 
-            loss = criterion(output_pred_ab, input_ab)
-            
+            loss = criterion(output_ab, input_ab)
+            image2rgb = gray_ab_tensor2rgb  # image to save epoch grids
+
         losses.update(loss.item(), input_gray.size(0))
 
         # Create img grid
@@ -42,8 +42,8 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
             for j in range(len(output_ab)):
                 if len(images) >= 64:
                     break
-                images.append(gray_smooth_tensor2rgb(input_gray[j].cpu(),
-                                    img_smooth=output_ab[j].detach().cpu()))
+                images.append(image2rgb(input_gray[j].cpu(),
+                                        output_ab[j].detach().cpu()))
 
         # Record time to do forward passes and save images
         batch_time.update(time.time() - end)
@@ -62,9 +62,9 @@ def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
     path_folder = 'outputs'
     path_file = 'output-epoch-{}.jpg'.format(epoch)
     path = os.path.join(path_folder, path_file)
-    
+
     torchvision.utils.save_image(grid_img, path)
-    
+
     print('Finished validation.')
     return losses.avg
 
@@ -89,22 +89,15 @@ def train(train_loader, model, criterion, optimizer, epoch, use_gpu):
 
         # Run forward pass
         output_ab = model(input_gray)
-        # torch.save(input_ab, "input_ab.pth")
-        # torch.save(input_gray, "input_gray.pth")
-        # torch.save(input_smooth, "input_smooth.pth")
-        # torch.save(output_smooth, "output_smooth.pth")
-        # exit(0)
 
-        if isinstance(criterion, MultiCrossEntropy):
+        if criterion.type == 'classification':
             loss = criterion(output_ab, input_smooth)
-        elif isinstance(criterion, nn.MSELoss):
-            output_pred_ab = ab_tensor_from_graysmooth(input_gray, output_ab)
-
+        elif criterion.type == 'regression':
             if use_gpu:
-                output_pred_ab = output_pred_ab.cuda()
+                output_ab = output_ab.cuda()
 
-            loss = criterion(output_pred_ab, input_ab)
-        
+            loss = criterion(output_ab, input_ab)
+
         losses.update(loss.item(), input_gray.size(0))
 
         # Compute gradient and optimize

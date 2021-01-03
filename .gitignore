@@ -1,9 +1,0 @@
-data
-datasets
-logs
-checkpoints
-__pycache__
-.virtual_documents
-.ipynb_checkpoints
-outputs
-.idea
