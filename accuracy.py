@@ -14,12 +14,9 @@ def get_random_ab_channel(pathname_list):
     image_ab : numpy
         vector of dim (h, w, 2)
     """
-    train_set_dir = 'datasets/celeba/train/human/'
     idx = random.randrange(0, len(pathname_list))
-    path = pathname_list[idx]
-    filename = path.split('\\')[-1]
-    path = train_set_dir + filename
-    img_lab = lab_image_from_file(path)
+    pathname = pathname_list[idx]
+    img_lab = lab_image_from_file(pathname)
     return img_lab[..., 1:]
 
 
