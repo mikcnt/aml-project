@@ -2,7 +2,7 @@ import random
 from utils import *
 
 
-def get_random_ab_channel(pathname_list):
+def get_random_ab_channel(pathname_list, do_resize=False):
     """
     Returns the ab channel of a random image from the target set
     Parameters
@@ -17,6 +17,8 @@ def get_random_ab_channel(pathname_list):
     idx = random.randrange(0, len(pathname_list))
     pathname = pathname_list[idx]
     img_lab = lab_image_from_file(pathname)
+    if do_resize:
+        img_lab = resize(img_lab, (h, w))
     return img_lab[..., 1:]
 
 
