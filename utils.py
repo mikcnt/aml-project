@@ -7,6 +7,7 @@ from scipy.spatial import cKDTree
 from skimage.color import rgb2lab
 from skimage.transform import resize
 from PIL import Image, ImageTk
+from pathlib import Path
 
 # constants used to make the model flexible for both regression and classification
 CLASSIFICATION = "classification"
@@ -93,12 +94,12 @@ class CustomLoss(nn.Module):
         -------
             L2 loss according to Eq.1 at page 4 of Zhang et al.
         """
-        return torch.sqrt(((output_batch_ab - input_batch_ab)**2).sum(axis=1)).sum()
+        return torch.sqrt(((output_batch_ab - input_batch_ab) ** 2).sum(axis=1)).sum()
 
 
 def compute_prior_factor(alpha=.5):
     """ Compute prior factor according to Eq.4 (alpha = lambda) """
-    weight = ((1 - alpha) * prior_prob_smoothed + alpha / q)**(-1)
+    weight = ((1 - alpha) * prior_prob_smoothed + alpha / q) ** (-1)
     return weight / (prior_prob_smoothed * weight).sum()
 
 
@@ -373,7 +374,7 @@ def load_img_np(pathname):
     return np.array(Image.open(pathname).convert('RGB'))
 
 
-def get_img_prediction(model, pathname):
+def get_img_prediction(model, pathname, color_space='rgb'):
     img = load_img_np(pathname)
     img_original_size = img.shape[:2]
     img_lab = rgb2lab(img)
@@ -389,10 +390,13 @@ def get_img_prediction(model, pathname):
     img_lab_resized = resize(img_lab, img_original_size)
     img_gray = img_gray * 100
     img_lab_resized[:, :, 0] = img_gray
-    img_rgb = lab2rgb(img_lab_resized)
-    img_from_array = (img_rgb * 255).astype(np.uint8)
 
-    return img_from_array
+    if color_space == 'rgb':
+        img_rgb = lab2rgb(img_lab_resized)
+        img_from_array = (img_rgb * 255).astype(np.uint8)
+        return img_from_array
+    elif color_space == 'lab':
+        return img_lab_resized
 
 
 def get_img_prediction_as_tk(model, pathname, img_size):
@@ -476,3 +480,48 @@ def lab_image_from_file(filename):
     return true_img_lab
 
 
+def image_list_from_dir(pathname):
+    """ Returns the list of images in the target directory
+        (search recursively in subdirectories)
+
+    Parameters
+    ----------
+    pathname : string
+
+    Returns
+    -------
+    image_list : list of strings
+    """
+    return list(map(str, Path(pathname).rglob('*.jpg')))
+
+
+def img_ab_from_list(pathname_list):
+    """ Returns the list of images ab channels from the pathaname list
+
+    Parameters
+    ----------
+    pathname_list : list of strings
+
+    Returns
+    -------
+    image_ab_list : list of numpy of dim (h, w, 2)
+    """
+    return [lab_image_from_file(x)[..., 1:] for x in pathname_list]
+
+
+def img_ab_prediction_from_list(model, pathname_list):
+    """ Returns the list of ab channels of predicted images provided by pathnames
+
+    Parameters
+    ----------
+    model : ColorizationNet object
+    pathname_list : list of strings
+
+    Returns
+    -------
+    img_ab_list : list of numpy of dim (h, w, 2)
+    """
+    img_ab_list = [get_img_prediction(model, pathname,
+                                      color_space='lab')[..., 1:]
+                   for pathname in pathname_list[:10]]
+    return img_ab_list
