@@ -2,9 +2,10 @@ import torch.nn as nn
 
 
 class ColorizationNet(nn.Module):
-    def __init__(self, type='classification'):
+    def __init__(self, loss_type='classification'):
         super(ColorizationNet, self).__init__()
-
+        self.loss_type = loss_type
+        
         self.model1 = nn.Sequential(
             nn.Conv2d(1, 64, kernel_size=3, stride=1, padding=1, bias=True),
             nn.ReLU(),
@@ -90,17 +91,17 @@ class ColorizationNet(nn.Module):
             nn.Dropout(0.1),
         )
 
-        if type == 'classification':
+        if loss_type == 'classification':
             self.model9 = nn.Sequential(
                 nn.Conv2d(128, 313, kernel_size=1, stride=1, dilation=1, padding=0, bias=False),
                 nn.Upsample(scale_factor=4),
                 nn.Softmax(dim=1)
             )
-        elif type == 'regression':
+        elif loss_type == 'regression':
             self.model9 = nn.Sequential(
                 nn.Conv2d(128, 2, kernel_size=1, stride=1, dilation=1, padding=0, bias=False),
                 nn.Upsample(scale_factor=4),
-                nn.Softmax(dim=1)
+                nn.ReLU()
             )
 
     def forward(self, input_image):

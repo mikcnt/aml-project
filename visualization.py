@@ -3,6 +3,12 @@ import os.path
 from model import ColorizationNet
 from utils import *
 import torch
+import argparse
+
+parser = argparse.ArgumentParser(description='Training and Using ColorizationNet')
+parser.add_argument('--loss', default='classification', type=str, metavar='string', help='specify target loss function')
+
+args = parser.parse_args()
 
 img_size = (350, 350)
 img_box_size = (800, 350)
@@ -78,7 +84,7 @@ while True:
         # load model
         checkpoint = values["-MODEL-"]
         checkpoint = torch.load(checkpoint)
-        model = ColorizationNet()
+        model = ColorizationNet(args.loss)
         model.load_state_dict(checkpoint['model_state_dict'])
         print("Model correctly loaded")
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
