@@ -131,7 +131,7 @@ def main():
             # save model on each epoch
             if epoch % 5 == 0:
                 torch.save(checkpoint_dict,
-                           'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch + 1, int(losses)))
+                           'checkpoints/model-epoch-{}-losses-{:.0f}.pth'.format(epoch, int(losses)))
     else:
         with torch.no_grad():
             validate(val_loader, model, criterion, save_images, 0, use_gpu)
