@@ -6,7 +6,7 @@ import os
 from utils import *
 
 
-def validate(val_loader, model, criterion, save_images, epoch, use_gpu):
+def validate(val_loader, model, criterion, epoch, use_gpu):
     model.eval()
 
     # Prepare value counters and timers
