@@ -86,7 +86,7 @@ while True:
         checkpoint = values["-MODEL-"]
         if checkpoint == '':
             continue
-        checkpoint = torch.load(checkpoint)
+        checkpoint = torch.load(checkpoint, map_location=torch.device('cpu'))
         model = ColorizationNet(values["-LOSS-"])
         try:
             model.load_state_dict(checkpoint['model_state_dict'])
