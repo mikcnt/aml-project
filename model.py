@@ -100,7 +100,7 @@ class ColorizationNet(nn.Module):
             self.model9 = nn.Sequential(
                 nn.Conv2d(128, 2, kernel_size=1, stride=1, dilation=1, padding=0, bias=False),
                 nn.Upsample(scale_factor=4),
-                nn.Softmax(dim=1)
+                nn.ReLU()
             )
 
     def forward(self, input_image):
