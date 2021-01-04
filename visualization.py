@@ -31,6 +31,9 @@ file_list_column = [
         sg.Listbox(
             values=[], enable_events=True, size=(40, 20), key="-FILE LIST-"
         )
+    ],
+    [
+        sg.Text('', key="-LOG-", size=(40, 2))
     ]
 ]
 
@@ -81,10 +84,15 @@ while True:
         # a model has been selected
         # load model
         checkpoint = values["-MODEL-"]
+        if checkpoint == '':
+            continue
         checkpoint = torch.load(checkpoint)
         model = ColorizationNet(values["-LOSS-"])
-        model.load_state_dict(checkpoint['model_state_dict'])
-        print("Model correctly loaded")
+        try:
+            model.load_state_dict(checkpoint['model_state_dict'])
+            window["-LOG-"].update("Model correctly loaded.")
+        except:
+            window["-LOG-"].update('Error loading model: did you select the correct loss type?')
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
         # try:
         filename = os.path.join(
