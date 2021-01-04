@@ -102,7 +102,7 @@ def compute_prior_factor(alpha=.5):
     return weight / (prior_prob_smoothed * weight).sum()
 
 
-def gray_ab_tensor2rgb(img_gray, img_ab):
+def gray_ab_tensor2lab(img_gray, img_ab):
     """
 
     Parameters
@@ -120,6 +120,23 @@ def gray_ab_tensor2rgb(img_gray, img_ab):
     out_lab = np.zeros((h, w, 3))
     out_lab[:, :, 0] = img_gray.reshape((h, w)) * 100
     out_lab[:, :, 1:] = img_ab * 255 - 128
+
+    return out_lab
+
+
+def gray_ab_tensor2rgb(img_gray, img_ab):
+    """
+
+    Parameters
+    ----------
+    img_gray : tensor of dim (1, 224, 224)
+    img_ab : tensor of dim (2, 224, 224)
+
+    Returns
+    -------
+    numpy image in rgb of dim (224, 224, 3)
+    """
+    out_lab = gray_ab_tensor2lab(img_gray, img_ab)
 
     return lab2rgb(out_lab)
 
@@ -365,12 +382,14 @@ def get_img_prediction(model, pathname):
     img_gray_tensor = torch.from_numpy(img_gray_small).unsqueeze(0).float()
     img_gray_batch = img_gray_tensor.unsqueeze(0)
     img_smooth = model(img_gray_batch)[0]
-
-    img_lab = gray_smooth_tensor2lab_npy(img_gray_tensor, img_smooth)
+    if model.loss_type == 'classification':
+        img_lab = gray_smooth_tensor2lab_npy(img_gray_tensor, img_smooth)
+    else:
+        img_lab = gray_ab_tensor2lab(img_gray_tensor, img_smooth)
     img_lab_resized = resize(img_lab, img_original_size)
     img_gray = img_gray * 100
     img_lab_resized[:, :, 0] = img_gray
-    img_rgb = resize(lab2rgb(img_lab_resized), img_original_size)
+    img_rgb = lab2rgb(img_lab_resized)
     img_from_array = (img_rgb * 255).astype(np.uint8)
 
     return img_from_array
