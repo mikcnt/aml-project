@@ -3,12 +3,6 @@ import os.path
 from model import ColorizationNet
 from utils import *
 import torch
-import argparse
-
-parser = argparse.ArgumentParser(description='Training and Using ColorizationNet')
-parser.add_argument('--loss', default='classification', type=str, metavar='string', help='specify target loss function')
-
-args = parser.parse_args()
 
 img_size = (350, 350)
 img_box_size = (800, 350)
@@ -20,9 +14,13 @@ layout = [[sg.Text("Automatic Image Colorization")]]
 
 file_list_column = [
     [
+        sg.Text("Select loss type"),
+        sg.DropDown(['classification', 'regression'], key="-LOSS-", enable_events=True),
+    ],
+    [
         sg.Text("Select model"),
-        sg.In(size=(25, 1), enable_events=True, key="-MODEL-"),
-        sg.FileBrowse(),
+        sg.In(size=(25, 1), enable_events=True, key="-MODEL-", disabled=True),
+        sg.FileBrowse(disabled=True, key='-MODEL_BROWSE-'),
     ],
     [
         sg.Text("Image Folder"),
@@ -84,7 +82,7 @@ while True:
         # load model
         checkpoint = values["-MODEL-"]
         checkpoint = torch.load(checkpoint)
-        model = ColorizationNet(args.loss)
+        model = ColorizationNet(values["-LOSS-"])
         model.load_state_dict(checkpoint['model_state_dict'])
         print("Model correctly loaded")
     elif event == "-FILE LIST-":  # A file was chosen from the listbox
@@ -99,5 +97,8 @@ while True:
 
         # except Exception as e:
         #    print(e)
+    elif event == "-LOSS-":
+        window['-MODEL-'].update(disabled=False)
+        window['-MODEL_BROWSE-'].update(disabled=False)
 
 window.close()
