@@ -113,7 +113,7 @@ def gray_ab_tensor2lab(img_gray, img_ab):
 
     Returns
     -------
-    numpy image in rgb of dim (224, 224, 3)
+    numpy image in lab of dim (224, 224, 3)
     """
     img_gray = img_gray.detach().cpu().numpy().transpose((1, 2, 0))
     img_ab = img_ab.detach().cpu().numpy().transpose((1, 2, 0))
@@ -331,8 +331,8 @@ def gray_smooth_tensor2rgb(img_gray, img_smooth, temperature=0.38):
 
     out_lab = np.zeros((h, w, 3))
     out_lab[:, :, 0] = x_np * 100
-    out_lab[:, :, 1] = x_a.cpu().numpy()
-    out_lab[:, :, 2] = x_b.cpu().numpy()
+    out_lab[:, :, 1] = x_a.detach().cpu().numpy()
+    out_lab[:, :, 2] = x_b.detach().cpu().numpy()
 
     img_rgb = lab2rgb(out_lab)
 
