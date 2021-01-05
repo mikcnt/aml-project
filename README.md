@@ -63,12 +63,18 @@ The repository consists of the following files:
     > Script containing the class for the custom dataset used in the training phase.
 * __`utils.py`__:
     > Several functions used both during the training/validation phase and for the visualization GUI.
+* __`accuracy.py`__:
+    > Script containing metric functions to assess the quality of the model.
 * __`visualization.py`__:
     > Script containing the implementation for the Python GUI to visualize a demo of a pre-trained model. Specify a `.pth` file as model and select a directory that contains jpg images to colorize black and white versions of the images contained in the directory and to compare them with the ground truth.
+* __`reduce_dataset.py`__:
+    > Util script to extract a subset of a dataset.
 
 **Notebooks**:
 * __`loss_visualizer.ipynb`__:
     > Notebook used to visualize the training and validation loss for a pre-trained model.
+* __`benchmark.ipynb`__:
+    > Notebook used to benchmark the model using visualization metrics (e.g., imgs where the model does good and those where the model behaves badly).
 
 **Other**:
 * __`objects`__:
