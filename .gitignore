@@ -6,3 +6,7 @@ __pycache__
 .virtual_documents
 .ipynb_checkpoints
 outputs
+.idea
+.vscode
+best_models
+fruit_data
