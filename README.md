@@ -77,6 +77,8 @@ The repository consists of the following files:
     > Notebook used to benchmark the model using visualization metrics (e.g., imgs where the model does good and those where the model behaves badly).
 
 **Other**:
+* __`report.pdf`__:
+    > Detailed report of the work.
 * __`objects`__:
     > Directory containing pickle objects used during training.
 * __`requirements.txt`__:
